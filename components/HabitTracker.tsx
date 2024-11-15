@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +9,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -17,69 +22,69 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useActivityManager } from "@/hooks/useActivityManager";
+import { useTimeSlots } from "@/hooks/useTimeSlots";
 import { supabase } from "@/lib/supabase";
-import { Activity, ActivityType } from "@/types/activities";
-import { format } from "date-fns";
-import ActivityTypeManager from "./ActivityTypeManager";
-import { Edit2 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreVertical, Trash2 } from "lucide-react";
-import { CalendarIcon } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Activity, ActivityType } from "@/types/activities";
+import { getMinutesFromTime } from "@/utils/timeUtils";
+import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ActivityGrid } from "./ActivityGrid";
+import ActivityTypeManager from "./ActivityTypeManager";
+import { DisplayTimeSelector } from "./DisplayTimeSelector";
+
+const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
 export default function HabitTracker() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [activityName, setActivityName] = useState("");
-  const [notes, setNotes] = useState("");
+  const timeSlots = useTimeSlots();
+  const { activities, activityTypes, loadActivities, loadActivityTypes } =
+    useActivityManager(selectedDate);
+
+  const [formState, setFormState] = useState({
+    startTime: "",
+    endTime: "",
+    activityName: "",
+    notes: "",
+    selectedType: "",
+  });
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
-  const [selectedType, setSelectedType] = useState<string>("");
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [typesUpdated, setTypesUpdated] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartSlot, setDragStartSlot] = useState<string | null>(null);
-  const [dragEndSlot, setDragEndSlot] = useState<string | null>(null);
 
-  const timeSlots = Array.from({ length: 48 }, (_, i) => {
-    const hour = Math.floor(i / 2);
-    const minutes = i % 2 === 0 ? "00" : "30";
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour.toString().padStart(2, "0")}:${minutes} ${period}`;
+  const [dragState, setDragState] = useState({
+    isDragging: false,
+    dragStartSlot: null as string | null,
+    dragEndSlot: null as string | null,
+  });
+
+  const [displayTimes, setDisplayTimes] = useState({
+    startTime: "07:00 AM",
+    endTime: "10:00 PM",
   });
 
   const resetForm = () => {
     setSelectedDate(new Date());
-    setStartTime("");
-    setEndTime("");
-    setActivityName("");
-    setSelectedType("");
-    setNotes("");
+    setFormState({
+      startTime: "",
+      endTime: "",
+      activityName: "",
+      notes: "",
+      selectedType: "",
+    });
   };
 
   const addActivity = async () => {
     if (
       !selectedDate ||
-      !startTime ||
-      !endTime ||
-      !activityName ||
-      !selectedType
+      !formState.startTime ||
+      !formState.endTime ||
+      !formState.activityName ||
+      !formState.selectedType
     ) {
       console.error("Missing required fields");
       return;
@@ -91,11 +96,11 @@ export default function HabitTracker() {
         .insert([
           {
             date: selectedDate.toISOString().split("T")[0],
-            start_time: startTime,
-            end_time: endTime,
-            activity_name: activityName,
-            activity_type_id: selectedType,
-            notes: notes || null,
+            start_time: formState.startTime,
+            end_time: formState.endTime,
+            activity_name: formState.activityName,
+            activity_type_id: formState.selectedType,
+            notes: formState.notes || null,
           },
         ])
         .select("*")
@@ -107,60 +112,12 @@ export default function HabitTracker() {
       }
 
       if (data) {
-        setActivities((prev) => [...prev, data]);
+        loadActivities(selectedDate);
         setIsDialogOpen(false);
         resetForm();
       }
     } catch (err) {
       console.error("Error in addActivity:", err);
-    }
-  };
-
-  const loadActivities = async (date: Date) => {
-    try {
-      const formattedDate = format(date, "yyyy-MM-dd");
-
-      const { data, error } = await supabase
-        .from("activities")
-        .select(
-          `
-          *,
-          activity_type:activity_types(*)
-        `
-        )
-        .eq("date", formattedDate)
-        .order("start_time", { ascending: true });
-
-      if (error) {
-        console.error("Error loading activities:", error.message);
-        return;
-      }
-
-      if (data) {
-        setActivities(data);
-      }
-    } catch (err) {
-      console.error("Error in loadActivities:", err);
-    }
-  };
-
-  const loadActivityTypes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("activity_types")
-        .select("*")
-        .order("name");
-
-      if (error) {
-        console.error("Error loading activity types:", error.message);
-        return;
-      }
-
-      if (data) {
-        setActivityTypes(data);
-      }
-    } catch (err) {
-      console.error("Error in loadActivityTypes:", err);
     }
   };
 
@@ -210,7 +167,7 @@ export default function HabitTracker() {
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
-      if (isDragging) {
+      if (dragState.isDragging) {
         handleDragEnd();
       }
     };
@@ -219,7 +176,7 @@ export default function HabitTracker() {
     return () => {
       window.removeEventListener("mouseup", handleGlobalMouseUp);
     };
-  }, [isDragging]);
+  }, [dragState.isDragging]);
 
   const handlePreviousDay = () => {
     const newDate = new Date(selectedDate);
@@ -237,45 +194,85 @@ export default function HabitTracker() {
     setTypesUpdated(true);
   };
 
-  const handleTimeSlotClick = (timeSlot: string) => {
-    // Calculer l'heure de fin (30 minutes après l'heure de début)
-    const startTime = timeSlot;
-    const startIndex = timeSlots.findIndex((t) => t === startTime);
-    const endTime = timeSlots[startIndex + 1] || timeSlots[startIndex];
-
-    setStartTime(startTime);
-    setEndTime(endTime);
-    setIsDialogOpen(true);
-  };
-
   const handleDragStart = (timeSlot: string) => {
-    setIsDragging(true);
-    setDragStartSlot(timeSlot);
-    setDragEndSlot(timeSlot);
+    setDragState({
+      ...dragState,
+      isDragging: true,
+      dragStartSlot: timeSlot,
+      dragEndSlot: timeSlot,
+    });
   };
 
   const handleDragMove = (timeSlot: string) => {
-    if (isDragging) {
-      setDragEndSlot(timeSlot);
+    if (dragState.isDragging) {
+      setDragState({
+        ...dragState,
+        dragEndSlot: timeSlot,
+      });
     }
   };
 
   const handleDragEnd = () => {
-    if (isDragging && dragStartSlot && dragEndSlot) {
-      const startIdx = dragStartSlot ? timeSlots.indexOf(dragStartSlot) : 0;
-      const endIdx = dragEndSlot ? timeSlots.indexOf(dragEndSlot) : 0;
+    if (
+      dragState.isDragging &&
+      dragState.dragStartSlot &&
+      dragState.dragEndSlot
+    ) {
+      const startIdx = dragState.dragStartSlot
+        ? timeSlots.indexOf(dragState.dragStartSlot)
+        : 0;
+      const endIdx = dragState.dragEndSlot
+        ? timeSlots.indexOf(dragState.dragEndSlot)
+        : 0;
       const finalStartTime = timeSlots[Math.min(startIdx, endIdx)];
       const finalEndTime = timeSlots[Math.max(startIdx, endIdx)];
 
-      setStartTime(finalStartTime);
-      setEndTime(finalEndTime);
+      setFormState({
+        ...formState,
+        startTime: finalStartTime,
+        endTime: finalEndTime,
+      });
       setIsDialogOpen(true);
     }
 
-    setIsDragging(false);
-    setDragStartSlot(null);
-    setDragEndSlot(null);
+    setDragState({
+      ...dragState,
+      isDragging: false,
+      dragStartSlot: null,
+      dragEndSlot: null,
+    });
   };
+
+  const calculateActivityPosition = (time: string) => {
+    const startMinutes = getMinutesFromTime(time);
+    const displayStartMinutes = getMinutesFromTime(displayTimes.startTime);
+    return ((startMinutes - displayStartMinutes) / 30) * 40;
+  };
+
+  const isActivityVisible = (activity: Activity) => {
+    const startMinutes = getMinutesFromTime(activity.start_time);
+    const endMinutes = getMinutesFromTime(activity.end_time);
+    const displayStartMinutes = getMinutesFromTime(displayTimes.startTime);
+    const displayEndMinutes = getMinutesFromTime(displayTimes.endTime);
+
+    return startMinutes < displayEndMinutes && endMinutes > displayStartMinutes;
+  };
+
+  const handleDisplayTimeChange = (type: "start" | "end", time: string) => {
+    const newDisplayTimes = {
+      ...displayTimes,
+      [type === "start" ? "startTime" : "endTime"]: time,
+    };
+    setDisplayTimes(newDisplayTimes);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newDisplayTimes));
+  };
+
+  useEffect(() => {
+    const savedTimes = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedTimes) {
+      setDisplayTimes(JSON.parse(savedTimes));
+    }
+  }, []);
 
   return (
     <div className="p-4">
@@ -293,11 +290,17 @@ export default function HabitTracker() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Activity Type</label>
-                  <Select value={selectedType} onValueChange={setSelectedType}>
+                  <Select
+                    value={formState.selectedType}
+                    onValueChange={(type) =>
+                      setFormState({ ...formState, selectedType: type })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue>
-                        {activityTypes.find((type) => type.id === selectedType)
-                          ?.name || "Select a type"}
+                        {activityTypes.find(
+                          (type) => type.id === formState.selectedType
+                        )?.name || "Select a type"}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -313,8 +316,13 @@ export default function HabitTracker() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Activity Name</label>
                   <Input
-                    value={activityName}
-                    onChange={(e) => setActivityName(e.target.value)}
+                    value={formState.activityName}
+                    onChange={(e) =>
+                      setFormState({
+                        ...formState,
+                        activityName: e.target.value,
+                      })
+                    }
                     placeholder="Activity Name"
                   />
                 </div>
@@ -322,9 +330,14 @@ export default function HabitTracker() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Start Time</label>
-                    <Select value={startTime} onValueChange={setStartTime}>
+                    <Select
+                      value={formState.startTime}
+                      onValueChange={(time) =>
+                        setFormState({ ...formState, startTime: time })
+                      }
+                    >
                       <SelectTrigger>
-                        <SelectValue>{startTime}</SelectValue>
+                        <SelectValue>{formState.startTime}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {timeSlots.map((time) => (
@@ -338,9 +351,14 @@ export default function HabitTracker() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">End Time</label>
-                    <Select value={endTime} onValueChange={setEndTime}>
+                    <Select
+                      value={formState.endTime}
+                      onValueChange={(time) =>
+                        setFormState({ ...formState, endTime: time })
+                      }
+                    >
                       <SelectTrigger>
-                        <SelectValue>{endTime}</SelectValue>
+                        <SelectValue>{formState.endTime}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {timeSlots.map((time) => (
@@ -356,8 +374,10 @@ export default function HabitTracker() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Notes</label>
                   <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    value={formState.notes}
+                    onChange={(e) =>
+                      setFormState({ ...formState, notes: e.target.value })
+                    }
                     placeholder="Notes (optional)"
                   />
                 </div>
@@ -404,137 +424,26 @@ export default function HabitTracker() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[100px_1fr] gap-4">
-        <div>
-          {timeSlots.map((timeSlot) => (
-            <div
-              key={timeSlot}
-              className="h-10 flex items-center justify-center border"
-            >
-              {timeSlot}
-            </div>
-          ))}
-        </div>
-        <div className="relative">
-          {timeSlots.map((timeSlot) => {
-            const startIdx = dragStartSlot
-              ? timeSlots.indexOf(dragStartSlot)
-              : 0;
-            const endIdx = dragEndSlot ? timeSlots.indexOf(dragEndSlot) : 0;
-            const isInDragRange =
-              isDragging &&
-              dragStartSlot &&
-              dragEndSlot &&
-              timeSlots.indexOf(timeSlot) >= Math.min(startIdx, endIdx) &&
-              timeSlots.indexOf(timeSlot) <= Math.max(startIdx, endIdx);
+      <DisplayTimeSelector
+        timeSlots={timeSlots}
+        displayTimes={displayTimes}
+        onTimeChange={handleDisplayTimeChange}
+      />
 
-            return (
-              <div
-                key={timeSlot}
-                className={cn(
-                  "h-10 border-b border-gray-200 cursor-pointer transition-colors",
-                  isInDragRange && "bg-accent/50"
-                )}
-                onMouseDown={() => handleDragStart(timeSlot)}
-                onMouseEnter={() => handleDragMove(timeSlot)}
-                onMouseUp={handleDragEnd}
-              />
-            );
-          })}
-          {activities.map((activity) => {
-            const startMinutes = getMinutesFromTime(activity.start_time);
-            const endMinutes = getMinutesFromTime(activity.end_time);
-            const duration = endMinutes - startMinutes;
-            const activityType = activityTypes.find(
-              (type) => type.id === activity.activity_type_id
-            );
-
-            // Convertir la couleur hex en rgba avec faible opacité
-            const getBgColor = (hexColor: string | undefined) => {
-              if (!hexColor) return "rgb(var(--primary) / 0.05)";
-              // Convertir hex en rgb et ajouter une faible opacité
-              const hex = hexColor.replace("#", "");
-              const r = parseInt(hex.substring(0, 2), 16);
-              const g = parseInt(hex.substring(2, 4), 16);
-              const b = parseInt(hex.substring(4, 6), 16);
-              return `rgba(${r}, ${g}, ${b}, 0.15)`; // Opacité à 0.15
-            };
-
-            return (
-              <div
-                key={activity.id}
-                className="absolute left-0 right-0 mx-2 rounded-lg p-2 overflow-hidden hover:bg-opacity-25 transition-all cursor-pointer group border border-black/5"
-                style={{
-                  top: `${(startMinutes / 30) * 40}px`,
-                  height: `${(duration / 30) * 40}px`,
-                  backgroundColor: getBgColor(activityType?.color),
-                }}
-                onClick={() => setEditingActivity(activity)}
-              >
-                <div className="font-medium flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {activityType && (
-                      <div
-                        className="w-3 h-3 rounded-full border border-black/10"
-                        style={{ backgroundColor: activityType.color }}
-                        title={activityType.name}
-                      />
-                    )}
-                    <span>{activity.activity_name}</span>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingActivity(activity);
-                        }}
-                      >
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteActivity(activity.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="text-sm opacity-75 flex items-center gap-2">
-                  <span>
-                    {activity.start_time} - {activity.end_time}
-                  </span>
-                  {activityType && (
-                    <span className="text-xs bg-black/10 px-2 py-0.5 rounded-full">
-                      {activityType.name}
-                    </span>
-                  )}
-                </div>
-                {activity.notes && (
-                  <div className="text-sm mt-1 opacity-75">
-                    {activity.notes}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <ActivityGrid
+        timeSlots={timeSlots}
+        activities={activities}
+        activityTypes={activityTypes}
+        displayTimes={displayTimes}
+        dragState={dragState}
+        onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
+        onEditActivity={setEditingActivity}
+        onDeleteActivity={deleteActivity}
+        calculateActivityPosition={calculateActivityPosition}
+        isActivityVisible={isActivityVisible}
+      />
 
       {editingActivity && (
         <EditActivityDialog
@@ -548,11 +457,6 @@ export default function HabitTracker() {
       )}
     </div>
   );
-}
-
-function getMinutesFromTime(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
 }
 
 const EditActivityDialog = ({
