@@ -52,6 +52,9 @@ export default function HabitTracker() {
   const [selectedType, setSelectedType] = useState<string>("");
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [typesUpdated, setTypesUpdated] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartSlot, setDragStartSlot] = useState<string | null>(null);
+  const [dragEndSlot, setDragEndSlot] = useState<string | null>(null);
 
   const timeSlots = Array.from({ length: 48 }, (_, i) => {
     const hour = Math.floor(i / 2);
@@ -205,6 +208,19 @@ export default function HabitTracker() {
     loadActivities(selectedDate);
   }, [selectedDate, activityTypes]);
 
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        handleDragEnd();
+      }
+    };
+
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [isDragging]);
+
   const handlePreviousDay = () => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() - 1);
@@ -219,6 +235,46 @@ export default function HabitTracker() {
 
   const handleTypeChange = () => {
     setTypesUpdated(true);
+  };
+
+  const handleTimeSlotClick = (timeSlot: string) => {
+    // Calculer l'heure de fin (30 minutes après l'heure de début)
+    const startTime = timeSlot;
+    const startIndex = timeSlots.findIndex((t) => t === startTime);
+    const endTime = timeSlots[startIndex + 1] || timeSlots[startIndex];
+
+    setStartTime(startTime);
+    setEndTime(endTime);
+    setIsDialogOpen(true);
+  };
+
+  const handleDragStart = (timeSlot: string) => {
+    setIsDragging(true);
+    setDragStartSlot(timeSlot);
+    setDragEndSlot(timeSlot);
+  };
+
+  const handleDragMove = (timeSlot: string) => {
+    if (isDragging) {
+      setDragEndSlot(timeSlot);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (isDragging && dragStartSlot && dragEndSlot) {
+      const startIdx = dragStartSlot ? timeSlots.indexOf(dragStartSlot) : 0;
+      const endIdx = dragEndSlot ? timeSlots.indexOf(dragEndSlot) : 0;
+      const finalStartTime = timeSlots[Math.min(startIdx, endIdx)];
+      const finalEndTime = timeSlots[Math.max(startIdx, endIdx)];
+
+      setStartTime(finalStartTime);
+      setEndTime(finalEndTime);
+      setIsDialogOpen(true);
+    }
+
+    setIsDragging(false);
+    setDragStartSlot(null);
+    setDragEndSlot(null);
   };
 
   return (
@@ -360,9 +416,31 @@ export default function HabitTracker() {
           ))}
         </div>
         <div className="relative">
-          {timeSlots.map((timeSlot) => (
-            <div key={timeSlot} className="h-10 border-b border-gray-200" />
-          ))}
+          {timeSlots.map((timeSlot) => {
+            const startIdx = dragStartSlot
+              ? timeSlots.indexOf(dragStartSlot)
+              : 0;
+            const endIdx = dragEndSlot ? timeSlots.indexOf(dragEndSlot) : 0;
+            const isInDragRange =
+              isDragging &&
+              dragStartSlot &&
+              dragEndSlot &&
+              timeSlots.indexOf(timeSlot) >= Math.min(startIdx, endIdx) &&
+              timeSlots.indexOf(timeSlot) <= Math.max(startIdx, endIdx);
+
+            return (
+              <div
+                key={timeSlot}
+                className={cn(
+                  "h-10 border-b border-gray-200 cursor-pointer transition-colors",
+                  isInDragRange && "bg-accent/50"
+                )}
+                onMouseDown={() => handleDragStart(timeSlot)}
+                onMouseEnter={() => handleDragMove(timeSlot)}
+                onMouseUp={handleDragEnd}
+              />
+            );
+          })}
           {activities.map((activity) => {
             const startMinutes = getMinutesFromTime(activity.start_time);
             const endMinutes = getMinutesFromTime(activity.end_time);
