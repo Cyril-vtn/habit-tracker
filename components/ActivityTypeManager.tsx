@@ -111,6 +111,7 @@ export default function ActivityTypeManager({
         setTypes((prev) => [...prev, data]);
         setNewTypeName("");
         setNewTypeColor("#000000");
+        onTypeChange?.();
       }
     } catch (err) {
       console.error("Error adding activity type:", err);
@@ -118,7 +119,7 @@ export default function ActivityTypeManager({
   };
 
   return (
-    <div className="mb-8">
+    <>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
           <Button variant="outline">Manage Activity Types</Button>
@@ -212,6 +213,6 @@ export default function ActivityTypeManager({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

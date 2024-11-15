@@ -31,6 +31,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Trash2 } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function HabitTracker() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -40,10 +48,10 @@ export default function HabitTracker() {
   const [activityName, setActivityName] = useState("");
   const [notes, setNotes] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
   const [selectedType, setSelectedType] = useState<string>("");
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [typesUpdated, setTypesUpdated] = useState(false);
 
   const timeSlots = Array.from({ length: 48 }, (_, i) => {
     const hour = Math.floor(i / 2);
@@ -190,107 +198,154 @@ export default function HabitTracker() {
 
   useEffect(() => {
     loadActivityTypes();
-  }, []);
+    setTypesUpdated(false);
+  }, [typesUpdated]);
 
   useEffect(() => {
     loadActivities(selectedDate);
   }, [selectedDate, activityTypes]);
 
+  const handlePreviousDay = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() - 1);
+    setSelectedDate(newDate);
+  };
+
+  const handleNextDay = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + 1);
+    setSelectedDate(newDate);
+  };
+
+  const handleTypeChange = () => {
+    setTypesUpdated(true);
+  };
+
   return (
     <div className="p-4">
-      <ActivityTypeManager onTypeChange={loadActivityTypes} />
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Habit Tracker</h1>
-        <div className="flex flex-col gap-4 items-end">
-          <div className="relative">
-            <Button onClick={() => setShowCalendar(!showCalendar)}>
-              Select Date
-            </Button>
-            {showCalendar && (
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => {
-                  if (date) {
-                    setSelectedDate(date);
-                  }
-                  setShowCalendar(false);
-                }}
-                className="absolute top-full right-0 mt-1 z-10 bg-white rounded-md border shadow-lg"
-              />
-            )}
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>Add Activity</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Activity</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(newDate) => setSelectedDate(newDate || new Date())}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Select onValueChange={setStartTime}>
+      <div className="flex items-center justify-between mb-8">
+        <ActivityTypeManager onTypeChange={handleTypeChange} />
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>Add Activity</Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add Activity</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Activity Type</label>
+                  <Select value={selectedType} onValueChange={setSelectedType}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Start Time" />
+                      <SelectValue>
+                        {activityTypes.find((type) => type.id === selectedType)
+                          ?.name || "Select a type"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {timeSlots.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select onValueChange={setEndTime}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="End Time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeSlots.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
+                      {activityTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <Select onValueChange={setSelectedType} value={selectedType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Activity Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activityTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="Activity Name"
-                  value={activityName}
-                  onChange={(e) => setActivityName(e.target.value)}
-                />
-                <Textarea
-                  placeholder="Notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-                <Button onClick={addActivity}>Save Activity</Button>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Activity Name</label>
+                  <Input
+                    value={activityName}
+                    onChange={(e) => setActivityName(e.target.value)}
+                    placeholder="Activity Name"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Start Time</label>
+                    <Select value={startTime} onValueChange={setStartTime}>
+                      <SelectTrigger>
+                        <SelectValue>{startTime}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">End Time</label>
+                    <Select value={endTime} onValueChange={setEndTime}>
+                      <SelectTrigger>
+                        <SelectValue>{endTime}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Notes</label>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Notes (optional)"
+                  />
+                </div>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+
+              <Button onClick={addActivity} className="mt-4">
+                Add Activity
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="text-lg mb-4">
-        Activities for {format(selectedDate, "EEEE, MMMM do, yyyy")}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4 w-full">
+          <Button variant="outline" size="icon" onClick={handlePreviousDay}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <div className="flex-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn("w-full justify-center text-xl font-semibold")}
+                >
+                  {format(selectedDate, "EEEE, MMMM do, yyyy")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <Button variant="outline" size="icon" onClick={handleNextDay}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-[100px_1fr] gap-4">

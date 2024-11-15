@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   PieChart,
   Pie,
@@ -27,11 +35,20 @@ const getMinutesFromTime = (time: string): number => {
 };
 
 export default function ActivityStats() {
-  const [startDate, setStartDate] = useState<Date>(new Date());
-  const [endDate, setEndDate] = useState<Date>(new Date());
+  const today = new Date();
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: today,
+    to: today,
+  });
   const [stats, setStats] = useState<ActivityStat[]>([]);
 
+  useEffect(() => {
+    loadStats();
+  }, []);
+
   const loadStats = async () => {
+    if (!date?.from || !date?.to) return;
+
     try {
       const { data, error } = await supabase
         .from("activities")
@@ -41,8 +58,8 @@ export default function ActivityStats() {
           activity_type:activity_types(*)
         `
         )
-        .gte("date", format(startDate, "yyyy-MM-dd"))
-        .lte("date", format(endDate, "yyyy-MM-dd"));
+        .gte("date", format(date.from, "yyyy-MM-dd"))
+        .lte("date", format(date.to, "yyyy-MM-dd"));
 
       if (error) throw error;
 
@@ -53,7 +70,7 @@ export default function ActivityStats() {
           const type = activity.activity_type?.name || "Unknown";
           const startMinutes = getMinutesFromTime(activity.start_time);
           const endMinutes = getMinutesFromTime(activity.end_time);
-          const duration = (endMinutes - startMinutes) / 60; // Convert to hours
+          const duration = (endMinutes - startMinutes) / 60;
 
           if (!statsByType[type]) {
             statsByType[type] = {
@@ -75,27 +92,46 @@ export default function ActivityStats() {
   return (
     <div className="space-y-8">
       <Card className="p-6">
-        <div className="grid grid-cols-2 gap-8">
-          <div>
-            <h3 className="font-medium mb-2">Start Date</h3>
-            <Calendar
-              mode="single"
-              selected={startDate}
-              onSelect={(date) => date && setStartDate(date)}
-            />
-          </div>
-          <div>
-            <h3 className="font-medium mb-2">End Date</h3>
-            <Calendar
-              mode="single"
-              selected={endDate}
-              onSelect={(date) => date && setEndDate(date)}
-            />
-          </div>
+        <div className="space-y-4 flex flex-col">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[300px] justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, "LLL dd, y")} -{" "}
+                      {format(date.to, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(date.from, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pick a date range</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+          <Button className="mt-0 w-fit" onClick={loadStats}>
+            Load Statistics
+          </Button>
         </div>
-        <Button onClick={loadStats} className="mt-4">
-          Load Statistics
-        </Button>
       </Card>
 
       {stats.length > 0 && (

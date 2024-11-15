@@ -1,9 +1,5 @@
-import AppTabs from "@/components/Tabs";
+import HabitTracker from "@/components/HabitTracker";
 
 export default function Home() {
-  return (
-    <main className="container mx-auto">
-      <AppTabs />
-    </main>
-  );
+  return <HabitTracker />;
 }
