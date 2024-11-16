@@ -22,7 +22,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <div className="h-screen w-64 bg-card border-r p-4 fixed left-0 top-0">
+    <div className="w-full p-4">
       <h1 className="text-2xl font-bold mb-8">Habit Tracker</h1>
       <nav className="space-y-2">
         {navItems.map((item) => (

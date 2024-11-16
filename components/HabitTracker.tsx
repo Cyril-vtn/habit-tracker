@@ -295,76 +295,41 @@ export default function HabitTracker() {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-8">
-        <ActivityTypeManager onTypeChange={handleTypeChange} />
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Add Activity</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add Activity</DialogTitle>
-              <DialogDescription>
-                Fill in the details to add a new activity to your schedule.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Activity Type</label>
-                  <Select
-                    value={formState.selectedType}
-                    onValueChange={(type) =>
-                      setFormState({ ...formState, selectedType: type })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue>
-                        {activityTypes.find(
-                          (type) => type.id === formState.selectedType
-                        )?.name || "Select a type"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activityTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Activity Name</label>
-                  <Input
-                    value={formState.activityName}
-                    onChange={(e) =>
-                      setFormState({
-                        ...formState,
-                        activityName: e.target.value,
-                      })
-                    }
-                    placeholder="Activity Name"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-4 sm:space-y-8">
+        <div className="flex flex-row items-start sm:items-center justify-between gap-4">
+          <ActivityTypeManager onTypeChange={handleTypeChange} />
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Add Activity</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Activity</DialogTitle>
+                <DialogDescription>
+                  Fill in the details to add a new activity to your schedule.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Start Time</label>
+                    <label className="text-sm font-medium">Activity Type</label>
                     <Select
-                      value={formState.startTime}
-                      onValueChange={(time) =>
-                        setFormState({ ...formState, startTime: time })
+                      value={formState.selectedType}
+                      onValueChange={(type) =>
+                        setFormState({ ...formState, selectedType: type })
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue>{formState.startTime}</SelectValue>
+                        <SelectValue>
+                          {activityTypes.find(
+                            (type) => type.id === formState.selectedType
+                          )?.name || "Select a type"}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
+                        {activityTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -372,49 +337,84 @@ export default function HabitTracker() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">End Time</label>
-                    <Select
-                      value={formState.endTime}
-                      onValueChange={(time) =>
-                        setFormState({ ...formState, endTime: time })
+                    <label className="text-sm font-medium">Activity Name</label>
+                    <Input
+                      value={formState.activityName}
+                      onChange={(e) =>
+                        setFormState({
+                          ...formState,
+                          activityName: e.target.value,
+                        })
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue>{formState.endTime}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Activity Name"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Start Time</label>
+                      <Select
+                        value={formState.startTime}
+                        onValueChange={(time) =>
+                          setFormState({ ...formState, startTime: time })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue>{formState.startTime}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">End Time</label>
+                      <Select
+                        value={formState.endTime}
+                        onValueChange={(time) =>
+                          setFormState({ ...formState, endTime: time })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue>{formState.endTime}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Notes</label>
+                    <Textarea
+                      value={formState.notes}
+                      onChange={(e) =>
+                        setFormState({ ...formState, notes: e.target.value })
+                      }
+                      placeholder="Notes (optional)"
+                    />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Notes</label>
-                  <Textarea
-                    value={formState.notes}
-                    onChange={(e) =>
-                      setFormState({ ...formState, notes: e.target.value })
-                    }
-                    placeholder="Notes (optional)"
-                  />
-                </div>
+                <Button onClick={addActivity} className="mt-4">
+                  Add Activity
+                </Button>
               </div>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-              <Button onClick={addActivity} className="mt-4">
-                Add Activity
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4 w-full">
+        <div className="flex flex-row items-center gap-4 w-full">
           <Button variant="outline" size="icon" onClick={handlePreviousDay}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -424,9 +424,11 @@ export default function HabitTracker() {
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
-                  className={cn("w-full justify-center text-xl font-semibold")}
+                  className="w-full justify-center text-base sm:text-xl font-semibold"
                 >
-                  {format(selectedDate, "EEEE, MMMM do, yyyy")}
+                  {window.innerWidth < 640
+                    ? format(selectedDate, "dd/MM/yyyy")
+                    : format(selectedDate, "EEEE, MMMM do, yyyy")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="center">

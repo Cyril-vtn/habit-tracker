@@ -107,12 +107,12 @@ export function ActivityGrid({
   const positionedActivities = calculateOverlappingGroups(activities);
 
   return (
-    <div className="grid grid-cols-[100px_1fr] gap-4">
+    <div className="grid grid-cols-[80px_1fr] sm:grid-cols-[100px_1fr] gap-2 sm:gap-4">
       <div>
         {getFilteredTimeSlots().map((timeSlot) => (
           <div
             key={timeSlot}
-            className="h-10 flex items-center justify-center border"
+            className="h-10 flex items-center justify-center border text-xs sm:text-sm"
           >
             {timeSlot}
           </div>

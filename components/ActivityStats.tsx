@@ -110,50 +110,50 @@ export default function ActivityStats() {
 
   return (
     <div className="space-y-8">
-      <Card className="p-6">
-        <div className="space-y-4 flex flex-col">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-[300px] justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, "LLL dd, y")} -{" "}
-                      {format(date.to, "LLL dd, y")}
-                    </>
-                  ) : (
-                    format(date.from, "LLL dd, y")
-                  )
+      <div className=" flex flex-col px-4 mt-4">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-[300px] justify-start text-left font-normal",
+                !date && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {date?.from ? (
+                date.to ? (
+                  <>
+                    {format(date.from, "LLL dd, y")} -{" "}
+                    {format(date.to, "LLL dd, y")}
+                  </>
                 ) : (
-                  <span>Pick a date range</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={setDate}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </Card>
+                  format(date.from, "LLL dd, y")
+                )
+              ) : (
+                <span>Pick a date range</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from}
+              selected={date}
+              onSelect={setDate}
+              numberOfMonths={2}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
 
       {stats.length > 0 && (
-        <Card className="p-6">
-          <h2 className="text-xl font-bold mb-4">Activity Distribution</h2>
-          <div className="h-[400px]">
+        <div className="px-6 space-y-2">
+          <h2 className="text-lg sm:text-xl font-bold mb-4">
+            Activity Distribution
+          </h2>
+          <div className="h-[300px] sm:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -162,7 +162,7 @@ export default function ActivityStats() {
                   nameKey="type"
                   cx="50%"
                   cy="50%"
-                  outerRadius={150}
+                  outerRadius={window.innerWidth < 640 ? 100 : 150}
                 >
                   {stats.map((entry, index) => (
                     <Cell key={index} fill={entry.color} />
@@ -178,7 +178,7 @@ export default function ActivityStats() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </div>
       )}
     </div>
   );

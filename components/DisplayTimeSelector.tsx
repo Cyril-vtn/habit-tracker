@@ -21,14 +21,13 @@ export function DisplayTimeSelector({
   onTimeChange,
 }: DisplayTimeSelectorProps) {
   return (
-    <div className="mb-4 flex items-center gap-4">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">Display from</span>
+    <div className="flex flex-row sm:gap-4 gap-2 mb-4 mt-4">
+      <div className="w-full sm:w-auto">
         <Select
           value={displayTimes.startTime}
           onValueChange={(time) => onTimeChange("start", time)}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue>{displayTimes.startTime}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -47,14 +46,12 @@ export function DisplayTimeSelector({
           </SelectContent>
         </Select>
       </div>
-
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">to</span>
+      <div className="w-full sm:w-auto">
         <Select
           value={displayTimes.endTime}
           onValueChange={(time) => onTimeChange("end", time)}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue>{displayTimes.endTime}</SelectValue>
           </SelectTrigger>
           <SelectContent>
