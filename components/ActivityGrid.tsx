@@ -147,18 +147,34 @@ export function ActivityGrid({
           );
         })}
         {positionedActivities.map((activity) => {
-          const startMinutes = getMinutesFromTime(activity.start_time);
-          const endMinutes = getMinutesFromTime(activity.end_time);
-          const displayStartMinutes = getMinutesFromTime(
-            displayTimes.startTime
-          );
+          if (!isActivityVisible(activity)) return null;
 
-          // Ajuster la durée si l'activité commence avant la plage d'affichage
-          const adjustedStartMinutes = Math.max(
-            startMinutes,
-            displayStartMinutes
-          );
-          const duration = endMinutes - adjustedStartMinutes;
+          const calculateAdjustedPosition = (activity: PositionedActivity) => {
+            const startMinutes = getMinutesFromTime(activity.start_time);
+            const endMinutes = getMinutesFromTime(activity.end_time);
+            const displayStartMinutes = getMinutesFromTime(
+              displayTimes.startTime
+            );
+            const displayEndMinutes = getMinutesFromTime(displayTimes.endTime);
+
+            // Ajuster le début et la fin pour rester dans les limites d'affichage
+            const adjustedStartMinutes = Math.max(
+              startMinutes,
+              displayStartMinutes
+            );
+            const adjustedEndMinutes = Math.min(endMinutes, displayEndMinutes);
+
+            // Calculer la position relative au début de l'affichage
+            const relativeStart = adjustedStartMinutes - displayStartMinutes;
+            const duration = adjustedEndMinutes - adjustedStartMinutes;
+
+            return {
+              top: Math.round(relativeStart / 30) * 40,
+              height: Math.max(40, Math.round(duration / 30) * 40), // Minimum 40px height
+            };
+          };
+
+          const { top, height } = calculateAdjustedPosition(activity);
 
           const activityType = activityTypes.find(
             (type) => type.id === activity.activity_type_id
@@ -167,12 +183,11 @@ export function ActivityGrid({
           return (
             <div
               key={activity.id}
-              className="absolute mx-2 rounded-lg p-2 overflow-hidden hover:bg-opacity-25 transition-all cursor-pointer group border border-black/5"
+              className="absolute mx-2 rounded-lg p-2 overflow-hidden transition-all cursor-pointer group border border-black/5 hover:border-black/20"
               style={{
-                top: `${calculateActivityPosition(activity.start_time)}px`,
-                height: `${(duration / 30) * 40}px`,
+                top: `${top}px`,
+                height: `${height}px`,
                 backgroundColor: getBgColor(activityType?.color),
-                display: isActivityVisible(activity) ? "block" : "none",
                 right: "0",
                 left: `${activity.column * 80}px`,
                 width: `calc(100% - ${activity.column * 80}px)`,

@@ -12,7 +12,7 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 import {
   Cell,
@@ -38,6 +38,16 @@ const getMinutesFromTime = (time: string): number => {
   return hours * 60 + minutes;
 };
 
+const calculateDuration = (
+  startMinutes: number,
+  endMinutes: number
+): number => {
+  if (endMinutes < startMinutes) {
+    endMinutes += 24 * 60;
+  }
+  return (endMinutes - startMinutes) / 60;
+};
+
 export default function ActivityStats() {
   const today = new Date();
   const [date, setDate] = useState<DateRange | undefined>({
@@ -46,11 +56,7 @@ export default function ActivityStats() {
   });
   const [stats, setStats] = useState<ActivityStat[]>([]);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!date?.from || !date?.to) return;
 
     try {
@@ -69,12 +75,11 @@ export default function ActivityStats() {
 
       if (data) {
         const statsByType: { [key: string]: ActivityStat } = {};
-
         data.forEach((activity) => {
           const type = activity.activity_type?.name || "Unknown";
           const startMinutes = getMinutesFromTime(activity.start_time);
           const endMinutes = getMinutesFromTime(activity.end_time);
-          const duration = (endMinutes - startMinutes) / 60;
+          const duration = calculateDuration(startMinutes, endMinutes);
 
           if (!statsByType[type]) {
             statsByType[type] = {
@@ -86,12 +91,22 @@ export default function ActivityStats() {
           statsByType[type].duration += duration;
         });
 
-        setStats(Object.values(statsByType));
+        const validStats = Object.values(statsByType)
+          .filter((stat) => stat.duration > 0)
+          .map((stat) => ({
+            ...stat,
+            duration: Math.round(stat.duration * 2) / 2,
+          }));
+        setStats(validStats);
       }
     } catch (err) {
       console.error("Error loading stats:", err);
     }
-  };
+  }, [date]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
   return (
     <div className="space-y-8">
@@ -132,9 +147,6 @@ export default function ActivityStats() {
               />
             </PopoverContent>
           </Popover>
-          <Button className="mt-0 w-fit" onClick={loadStats}>
-            Load Statistics
-          </Button>
         </div>
       </Card>
 

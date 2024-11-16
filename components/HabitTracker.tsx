@@ -5,6 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -28,7 +29,7 @@ import { useTimeSlots } from "@/hooks/useTimeSlots";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Activity, ActivityType } from "@/types/activities";
-import { getMinutesFromTime } from "@/utils/timeUtils";
+import { formatTimeForDisplay, getMinutesFromTime } from "@/utils/timeUtils";
 import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -137,27 +138,13 @@ export default function HabitTracker() {
     if (!editingActivity) return;
 
     try {
-      const fieldsToUpdate = { ...updatedFields };
-
-      if (updatedFields.start_time) {
-        const [hours, minutes] = updatedFields.start_time
-          .split(" ")[0]
-          .split(":")
-          .map(Number);
-        const startDateTime = new Date(editingActivity.date);
-        startDateTime.setHours(hours, minutes, 0);
-        fieldsToUpdate.start_time = startDateTime.toISOString();
-      }
-
-      if (updatedFields.end_time) {
-        const [hours, minutes] = updatedFields.end_time
-          .split(" ")[0]
-          .split(":")
-          .map(Number);
-        const endDateTime = new Date(editingActivity.date);
-        endDateTime.setHours(hours, minutes, 0);
-        fieldsToUpdate.end_time = endDateTime.toISOString();
-      }
+      const fieldsToUpdate = {
+        activity_name: updatedFields.activity_name,
+        activity_type_id: updatedFields.activity_type_id,
+        notes: updatedFields.notes,
+        start_time: updatedFields.start_time,
+        end_time: updatedFields.end_time,
+      };
 
       const { error } = await supabase
         .from("activities")
@@ -317,6 +304,9 @@ export default function HabitTracker() {
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add Activity</DialogTitle>
+              <DialogDescription>
+                Fill in the details to add a new activity to your schedule.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-4">
@@ -485,6 +475,7 @@ export default function HabitTracker() {
           onSave={updateActivity}
           activityTypes={activityTypes}
           timeSlots={timeSlots}
+          onDeleteActivity={deleteActivity}
         />
       )}
     </div>
@@ -498,6 +489,7 @@ const EditActivityDialog = ({
   onSave,
   activityTypes,
   timeSlots,
+  onDeleteActivity,
 }: {
   activity: Activity;
   isOpen: boolean;
@@ -505,36 +497,71 @@ const EditActivityDialog = ({
   onSave: (updatedActivity: Partial<Activity>) => Promise<void>;
   activityTypes: ActivityType[];
   timeSlots: string[];
+  onDeleteActivity: (id: string) => void;
 }) => {
   const [editedName, setEditedName] = useState<string>(activity.activity_name);
-  const [editedStartTime, setEditedStartTime] = useState<string>(
-    activity.start_time
-  );
-  const [editedEndTime, setEditedEndTime] = useState<string>(activity.end_time);
+  const [editedStartTime, setEditedStartTime] = useState<string>("");
+  const [editedEndTime, setEditedEndTime] = useState<string>("");
   const [editedNotes, setEditedNotes] = useState<string>(activity.notes || "");
   const [editedTypeId, setEditedTypeId] = useState<string>(
     activity.activity_type_id
   );
 
+  // Initialisation avec conversion en format 12h
   useEffect(() => {
     if (activity) {
       setEditedName(activity.activity_name);
-      setEditedStartTime(activity.start_time);
-      setEditedEndTime(activity.end_time);
+      setEditedStartTime(formatTimeForDisplay(activity.start_time));
+      setEditedEndTime(formatTimeForDisplay(activity.end_time));
       setEditedNotes(activity.notes || "");
       setEditedTypeId(activity.activity_type_id);
     }
   }, [activity]);
 
   const handleSave = async () => {
-    await onSave({
-      activity_name: editedName,
-      start_time: editedStartTime,
-      end_time: editedEndTime,
-      notes: editedNotes,
-      activity_type_id: editedTypeId,
-    });
-    onClose();
+    try {
+      // Créer une date de base à partir de la date de l'activité
+      const baseDate = new Date(activity.date);
+
+      // Traiter l'heure de début
+      const [startTime, startPeriod] = editedStartTime.split(" ");
+      const [startHours, startMinutes] = startTime.split(":").map(Number);
+      let startHours24 = startHours;
+      if (startPeriod === "PM" && startHours !== 12) {
+        startHours24 = startHours + 12;
+      } else if (startPeriod === "AM" && startHours === 12) {
+        startHours24 = 0;
+      }
+
+      // Traiter l'heure de fin
+      const [endTime, endPeriod] = editedEndTime.split(" ");
+      const [endHours, endMinutes] = endTime.split(":").map(Number);
+      let endHours24 = endHours;
+      if (endPeriod === "PM" && endHours !== 12) {
+        endHours24 = endHours + 12;
+      } else if (endPeriod === "AM" && endHours === 12) {
+        endHours24 = 0;
+      }
+
+      // Créer les dates finales
+      const startDateTime = new Date(baseDate);
+      startDateTime.setHours(startHours24, startMinutes, 0, 0);
+
+      const endDateTime = new Date(baseDate);
+      endDateTime.setHours(endHours24, endMinutes, 0, 0);
+
+      await onSave({
+        activity_name: editedName,
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
+        notes: editedNotes,
+        activity_type_id: editedTypeId,
+      });
+
+      onClose();
+    } catch (error) {
+      console.error("Error saving activity:", error);
+    }
   };
 
   return (
@@ -542,6 +569,9 @@ const EditActivityDialog = ({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit Activity</DialogTitle>
+          <DialogDescription>
+            Modify the activity details and save your changes.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-4">
@@ -620,9 +650,18 @@ const EditActivityDialog = ({
             </div>
           </div>
 
-          <Button onClick={handleSave} className="mt-4">
-            Save Changes
-          </Button>
+          <div className="mt-4 flex flex-col gap-2">
+            <Button onClick={handleSave}>Save Changes</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onDeleteActivity(activity.id);
+                onClose();
+              }}
+            >
+              Delete Activity
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
