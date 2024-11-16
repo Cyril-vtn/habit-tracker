@@ -68,6 +68,19 @@ export default function HabitTracker() {
     endTime: "10:00 PM",
   });
 
+  const [windowWidth, setWindowWidth] = useState(0);
+
+  useEffect(() => {
+    setWindowWidth(window.innerWidth);
+
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const resetForm = () => {
     setSelectedDate(new Date());
     setFormState({
@@ -426,7 +439,7 @@ export default function HabitTracker() {
                   variant="ghost"
                   className="w-full justify-center text-base sm:text-xl font-semibold"
                 >
-                  {window.innerWidth < 640
+                  {windowWidth < 640
                     ? format(selectedDate, "dd/MM/yyyy")
                     : format(selectedDate, "EEEE, MMMM do, yyyy")}
                 </Button>

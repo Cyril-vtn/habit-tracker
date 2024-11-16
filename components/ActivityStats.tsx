@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Card } from "@/components/ui/card";
 import {
   Popover,
   PopoverContent,
@@ -162,7 +161,8 @@ export default function ActivityStats() {
                   nameKey="type"
                   cx="50%"
                   cy="50%"
-                  outerRadius={window.innerWidth < 640 ? 100 : 150}
+                  className="sm:outerRadius-[150px] outerRadius-[100px]"
+                  outerRadius={100}
                 >
                   {stats.map((entry, index) => (
                     <Cell key={index} fill={entry.color} />
