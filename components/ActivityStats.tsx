@@ -30,6 +30,10 @@ interface ActivityStat {
 }
 
 const getMinutesFromTime = (time: string): number => {
+  if (time.includes("T")) {
+    const date = new Date(time);
+    return date.getHours() * 60 + date.getMinutes();
+  }
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 };

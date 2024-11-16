@@ -1,5 +1,9 @@
 import { Activity, ActivityType } from "@/types/activities";
-import { getMinutesFromTime, getBgColor } from "@/utils/timeUtils";
+import {
+  getMinutesFromTime,
+  getBgColor,
+  formatTimeForDisplay,
+} from "@/utils/timeUtils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { MoreVertical, Edit2, Trash2 } from "lucide-react";
@@ -32,6 +36,11 @@ interface ActivityGridProps {
   isActivityVisible: (activity: Activity) => boolean;
 }
 
+interface PositionedActivity extends Activity {
+  column: number;
+  totalColumns: number;
+}
+
 export function ActivityGrid({
   timeSlots,
   activities,
@@ -46,11 +55,56 @@ export function ActivityGrid({
   calculateActivityPosition,
   isActivityVisible,
 }: ActivityGridProps) {
+  const calculateOverlappingGroups = (
+    activities: Activity[]
+  ): PositionedActivity[] => {
+    const sortedActivities = [...activities].sort((a, b) => {
+      const startA = getMinutesFromTime(a.start_time);
+      const startB = getMinutesFromTime(b.start_time);
+      return startA - startB;
+    });
+
+    const positionedActivities: PositionedActivity[] = [];
+    const groups: PositionedActivity[][] = [];
+
+    sortedActivities.forEach((activity) => {
+      const activityStart = getMinutesFromTime(activity.start_time);
+      const activityEnd = getMinutesFromTime(activity.end_time);
+
+      // Trouver le groupe qui chevauche cette activité
+      let foundGroup = groups.find((group) =>
+        group.some((groupActivity) => {
+          const groupStart = getMinutesFromTime(groupActivity.start_time);
+          const groupEnd = getMinutesFromTime(groupActivity.end_time);
+          return activityStart < groupEnd && activityEnd > groupStart;
+        })
+      );
+
+      if (!foundGroup) {
+        foundGroup = [];
+        groups.push(foundGroup);
+      }
+
+      const positionedActivity = {
+        ...activity,
+        column: foundGroup.length,
+        totalColumns: 1,
+      };
+
+      foundGroup.push(positionedActivity);
+      positionedActivities.push(positionedActivity);
+    });
+
+    return positionedActivities;
+  };
+
   const getFilteredTimeSlots = () => {
     const startIndex = timeSlots.indexOf(displayTimes.startTime);
     const endIndex = timeSlots.indexOf(displayTimes.endTime);
     return timeSlots.slice(startIndex, endIndex + 1);
   };
+
+  const positionedActivities = calculateOverlappingGroups(activities);
 
   return (
     <div className="grid grid-cols-[100px_1fr] gap-4">
@@ -92,7 +146,7 @@ export function ActivityGrid({
             />
           );
         })}
-        {activities.map((activity) => {
+        {positionedActivities.map((activity) => {
           const startMinutes = getMinutesFromTime(activity.start_time);
           const endMinutes = getMinutesFromTime(activity.end_time);
           const displayStartMinutes = getMinutesFromTime(
@@ -113,17 +167,25 @@ export function ActivityGrid({
           return (
             <div
               key={activity.id}
-              className="absolute left-0 right-0 mx-2 rounded-lg p-2 overflow-hidden hover:bg-opacity-25 transition-all cursor-pointer group border border-black/5"
+              className="absolute mx-2 rounded-lg p-2 overflow-hidden hover:bg-opacity-25 transition-all cursor-pointer group border border-black/5"
               style={{
                 top: `${calculateActivityPosition(activity.start_time)}px`,
                 height: `${(duration / 30) * 40}px`,
                 backgroundColor: getBgColor(activityType?.color),
                 display: isActivityVisible(activity) ? "block" : "none",
+                right: "0",
+                left: `${activity.column * 80}px`,
+                width: `calc(100% - ${activity.column * 80}px)`,
+                zIndex: activity.column,
               }}
               onClick={() => onEditActivity(activity)}
             >
               <ActivityContent
-                activity={activity}
+                activity={{
+                  ...activity,
+                  start_time: formatTimeForDisplay(activity.start_time),
+                  end_time: formatTimeForDisplay(activity.end_time),
+                }}
                 activityType={activityType}
                 onEdit={onEditActivity}
                 onDelete={onDeleteActivity}

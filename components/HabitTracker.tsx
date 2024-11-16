@@ -91,13 +91,29 @@ export default function HabitTracker() {
     }
 
     try {
+      const date = selectedDate.toISOString().split("T")[0];
+      const [startHours, startMinutes] = formState.startTime
+        .split(" ")[0]
+        .split(":")
+        .map(Number);
+      const [endHours, endMinutes] = formState.endTime
+        .split(" ")[0]
+        .split(":")
+        .map(Number);
+
+      const startDateTime = new Date(selectedDate);
+      startDateTime.setHours(startHours, startMinutes, 0);
+
+      const endDateTime = new Date(selectedDate);
+      endDateTime.setHours(endHours, endMinutes, 0);
+
       const { data, error } = await supabase
         .from("activities")
         .insert([
           {
-            date: selectedDate.toISOString().split("T")[0],
-            start_time: formState.startTime,
-            end_time: formState.endTime,
+            date: date,
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
             activity_name: formState.activityName,
             activity_type_id: formState.selectedType,
             notes: formState.notes || null,
@@ -106,13 +122,9 @@ export default function HabitTracker() {
         .select("*")
         .single();
 
-      if (error) {
-        console.error("Error adding activity:", error.message);
-        return;
-      }
-
+      if (error) throw error;
       if (data) {
-        loadActivities(selectedDate);
+        await loadActivities(selectedDate);
         setIsDialogOpen(false);
         resetForm();
       }
@@ -125,13 +137,34 @@ export default function HabitTracker() {
     if (!editingActivity) return;
 
     try {
+      const fieldsToUpdate = { ...updatedFields };
+
+      if (updatedFields.start_time) {
+        const [hours, minutes] = updatedFields.start_time
+          .split(" ")[0]
+          .split(":")
+          .map(Number);
+        const startDateTime = new Date(editingActivity.date);
+        startDateTime.setHours(hours, minutes, 0);
+        fieldsToUpdate.start_time = startDateTime.toISOString();
+      }
+
+      if (updatedFields.end_time) {
+        const [hours, minutes] = updatedFields.end_time
+          .split(" ")[0]
+          .split(":")
+          .map(Number);
+        const endDateTime = new Date(editingActivity.date);
+        endDateTime.setHours(hours, minutes, 0);
+        fieldsToUpdate.end_time = endDateTime.toISOString();
+      }
+
       const { error } = await supabase
         .from("activities")
-        .update(updatedFields)
+        .update(fieldsToUpdate)
         .eq("id", editingActivity.id);
 
       if (error) throw error;
-
       loadActivities(selectedDate);
       setEditingActivity(null);
     } catch (err) {
@@ -242,8 +275,7 @@ export default function HabitTracker() {
   const calculateActivityPosition = (time: string) => {
     const startMinutes = getMinutesFromTime(time);
     const displayStartMinutes = getMinutesFromTime(displayTimes.startTime);
-    const position = ((startMinutes - displayStartMinutes) / 30) * 40;
-    return Math.max(0, position);
+    return ((startMinutes - displayStartMinutes) / 30) * 40;
   };
 
   const isActivityVisible = (activity: Activity) => {

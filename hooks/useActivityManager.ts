@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Activity, ActivityType } from "@/types/activities";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
@@ -23,29 +23,8 @@ export const useActivityManager = (selectedDate: Date) => {
 
         if (error) throw error;
 
-        const currentDisplayTimes = displayTimes || {
-          startTime: "07:00 AM",
-          endTime: "10:00 PM",
-        };
-
         if (data) {
-          const displayStartMinutes = getMinutesFromTime(
-            currentDisplayTimes.startTime
-          );
-          const displayEndMinutes = getMinutesFromTime(
-            currentDisplayTimes.endTime
-          );
-
-          const filteredActivities = data.filter((activity) => {
-            const startMinutes = getMinutesFromTime(activity.start_time);
-            const endMinutes = getMinutesFromTime(activity.end_time);
-            return (
-              startMinutes < displayEndMinutes &&
-              endMinutes > displayStartMinutes
-            );
-          });
-
-          setActivities(filteredActivities);
+          setActivities(data);
         }
       } catch (err) {
         console.error("Error loading activities:", err);
@@ -67,6 +46,10 @@ export const useActivityManager = (selectedDate: Date) => {
       console.error("Error loading activity types:", err);
     }
   }, []);
+
+  useEffect(() => {
+    loadActivities(selectedDate);
+  }, [selectedDate, loadActivities]);
 
   return {
     activities,
