@@ -153,17 +153,13 @@ export default function HabitTracker() {
   };
 
   useEffect(() => {
-    loadActivities(selectedDate);
-  }, [selectedDate]);
+    loadActivities(selectedDate, displayTimes);
+  }, [selectedDate, displayTimes, loadActivities]);
 
   useEffect(() => {
     loadActivityTypes();
     setTypesUpdated(false);
-  }, [typesUpdated]);
-
-  useEffect(() => {
-    loadActivities(selectedDate);
-  }, [selectedDate, activityTypes]);
+  }, [typesUpdated, loadActivityTypes]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -246,7 +242,8 @@ export default function HabitTracker() {
   const calculateActivityPosition = (time: string) => {
     const startMinutes = getMinutesFromTime(time);
     const displayStartMinutes = getMinutesFromTime(displayTimes.startTime);
-    return ((startMinutes - displayStartMinutes) / 30) * 40;
+    const position = ((startMinutes - displayStartMinutes) / 30) * 40;
+    return Math.max(0, position);
   };
 
   const isActivityVisible = (activity: Activity) => {
@@ -265,12 +262,15 @@ export default function HabitTracker() {
     };
     setDisplayTimes(newDisplayTimes);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newDisplayTimes));
+    loadActivities(selectedDate, newDisplayTimes);
   };
 
   useEffect(() => {
     const savedTimes = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedTimes) {
-      setDisplayTimes(JSON.parse(savedTimes));
+      const parsedTimes = JSON.parse(savedTimes);
+      setDisplayTimes(parsedTimes);
+      loadActivities(selectedDate, parsedTimes);
     }
   }, []);
 

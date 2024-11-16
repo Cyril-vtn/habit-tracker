@@ -95,7 +95,17 @@ export function ActivityGrid({
         {activities.map((activity) => {
           const startMinutes = getMinutesFromTime(activity.start_time);
           const endMinutes = getMinutesFromTime(activity.end_time);
-          const duration = endMinutes - startMinutes;
+          const displayStartMinutes = getMinutesFromTime(
+            displayTimes.startTime
+          );
+
+          // Ajuster la durée si l'activité commence avant la plage d'affichage
+          const adjustedStartMinutes = Math.max(
+            startMinutes,
+            displayStartMinutes
+          );
+          const duration = endMinutes - adjustedStartMinutes;
+
           const activityType = activityTypes.find(
             (type) => type.id === activity.activity_type_id
           );
