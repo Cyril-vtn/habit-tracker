@@ -11,14 +11,14 @@ export const useTimeSlots = () => {
       const minutes = date.getMinutes();
       const period = hours >= 12 ? "PM" : "AM";
 
-      // Format spécial pour minuit
+      // Format 12h cohérent
       let formattedHours;
       if (hours === 0) {
-        formattedHours = "00";
-      } else if (hours === 12) {
         formattedHours = "12";
+      } else if (hours > 12) {
+        formattedHours = (hours - 12).toString().padStart(2, "0");
       } else {
-        formattedHours = format(date, "hh");
+        formattedHours = hours.toString().padStart(2, "0");
       }
 
       const formattedMinutes = minutes.toString().padStart(2, "0");

@@ -45,19 +45,24 @@ export const getMinutesFromTime = (time: string): number => {
   }
 };
 
-export const convertToUTC = (localDate: Date, timeString: string): Date => {
+export const convertToUTC = (baseDate: Date, timeString: string): Date => {
   const [time, period] = timeString.split(" ");
   const [hours, minutes] = time.split(":").map(Number);
-  let hours24 = hours;
 
+  // Convertir en format 24h
+  let hours24 = hours;
   if (period === "PM" && hours !== 12) {
     hours24 = hours + 12;
   } else if (period === "AM" && hours === 12) {
     hours24 = 0;
   }
 
-  // Créer la date dans le fuseau horaire local de l'utilisateur
-  const localDateTime = new Date(
+  // Créer une date locale avec les heures spécifiées
+  const localDate = new Date(baseDate);
+  localDate.setHours(hours24, minutes, 0, 0);
+
+  // Convertir en UTC en tenant compte du décalage horaire
+  const utcTimestamp = Date.UTC(
     localDate.getFullYear(),
     localDate.getMonth(),
     localDate.getDate(),
@@ -67,24 +72,9 @@ export const convertToUTC = (localDate: Date, timeString: string): Date => {
     0
   );
 
-  // Convertir en UTC en utilisant le fuseau horaire de l'utilisateur
-  const utcTime = new Date(
-    Date.UTC(
-      localDateTime.getFullYear(),
-      localDateTime.getMonth(),
-      localDateTime.getDate(),
-      hours24,
-      minutes,
-      0,
-      0
-    )
-  );
-
   // Ajuster pour le décalage horaire local
-  const offset = localDateTime.getTimezoneOffset();
-  utcTime.setMinutes(utcTime.getMinutes() - offset);
-
-  return utcTime;
+  const offsetInMinutes = localDate.getTimezoneOffset();
+  return new Date(utcTimestamp + offsetInMinutes * 60 * 1000);
 };
 
 export const getBgColor = (hexColor: string | undefined) => {
