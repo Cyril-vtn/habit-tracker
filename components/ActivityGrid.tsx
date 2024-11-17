@@ -156,21 +156,28 @@ export function ActivityGrid({
               displayTimes.startTime
             );
             const displayEndMinutes = getMinutesFromTime(displayTimes.endTime);
+            const dayEndMinutes = 23 * 60 + 59; // 11:59 PM
+
+            // Ajuster pour les activités qui se terminent après minuit
+            const adjustedEndMinutes =
+              endMinutes < startMinutes
+                ? Math.min(dayEndMinutes, displayEndMinutes) // Limiter à 11:59 PM
+                : endMinutes;
 
             // Ajuster le début et la fin pour rester dans les limites d'affichage
             const adjustedStartMinutes = Math.max(
               startMinutes,
               displayStartMinutes
             );
-            const adjustedEndMinutes = Math.min(endMinutes, displayEndMinutes);
+            const finalEndMinutes = Math.min(adjustedEndMinutes, dayEndMinutes);
 
             // Calculer la position relative au début de l'affichage
             const relativeStart = adjustedStartMinutes - displayStartMinutes;
-            const duration = adjustedEndMinutes - adjustedStartMinutes;
+            const duration = finalEndMinutes - adjustedStartMinutes;
 
             return {
               top: Math.round(relativeStart / 30) * 40,
-              height: Math.max(40, Math.round(duration / 30) * 40), // Minimum 40px height
+              height: Math.max(40, Math.round(duration / 30) * 40),
             };
           };
 

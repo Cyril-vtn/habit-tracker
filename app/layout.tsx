@@ -1,32 +1,23 @@
-import { MobileNav } from "@/components/MobileNav";
-import Link from "next/link";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-export default function RootLayout({
+import { AppSidebar } from "@/components/AppSidebar";
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = cookies();
+  const supabase = createServerComponentClient({ cookies: () => cookieStore });
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   return (
     <html lang="en">
-      <body>
-        <div className="flex min-h-screen">
-          {/* Sidebar pour desktop */}
-          <div className="hidden md:flex w-64 border-r">
-            <Sidebar />
-          </div>
-
-          {/* Layout mobile */}
-          <div className="flex flex-col w-full">
-            <div className="md:hidden flex items-center border-b p-4">
-              <MobileNav />
-              <h1 className="text-xl font-bold mx-auto">Habit Tracker</h1>
-            </div>
-
-            <main className="flex-1">{children}</main>
-          </div>
-        </div>
-      </body>
+      <body className={!session ? "" : "overflow-hidden"}>{children}</body>
     </html>
   );
 }

@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/supabase";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { ActivityType } from "@/types/activities";
 import { Edit2, Trash2, Plus, Save } from "lucide-react";
 
@@ -28,18 +28,23 @@ export default function ActivityTypeManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
+  const supabase = createClientComponentClient();
 
   const loadTypes = async () => {
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
       const { data, error } = await supabase
         .from("activity_types")
         .select("*")
+        .eq("user_id", userData.user.id)
         .order("name");
 
       if (error) throw error;
       if (data) setTypes(data);
     } catch (err) {
-      console.error("Error loading activity types:", err);
+      console.error("Error loading types:", err);
     }
   };
 
@@ -91,6 +96,7 @@ export default function ActivityTypeManager({
 
       if (error) throw error;
       setTypes(types.filter((type) => type.id !== id));
+      if (onTypeChange) onTypeChange();
     } catch (err) {
       console.error("Error deleting activity type:", err);
     }
@@ -100,18 +106,27 @@ export default function ActivityTypeManager({
     if (!newTypeName) return;
 
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
       const { data, error } = await supabase
         .from("activity_types")
-        .insert([{ name: newTypeName, color: newTypeColor }])
-        .select()
-        .single();
+        .insert([
+          {
+            name: newTypeName,
+            color: newTypeColor,
+            user_id: userData.user.id,
+          },
+        ])
+        .select();
 
       if (error) throw error;
-      if (data) {
-        setTypes((prev) => [...prev, data]);
+      if (data && data[0]) {
+        setTypes([...types, data[0]]);
         setNewTypeName("");
         setNewTypeColor("#000000");
-        onTypeChange?.();
+        if (onTypeChange) onTypeChange();
+        setIsDialogOpen(false);
       }
     } catch (err) {
       console.error("Error adding activity type:", err);

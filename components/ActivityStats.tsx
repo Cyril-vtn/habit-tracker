@@ -7,7 +7,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -21,6 +20,9 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { Loader2 } from "lucide-react";
+import { ActivityType } from "@/types/activities";
 
 interface ActivityStat {
   type: string;
@@ -54,11 +56,20 @@ export default function ActivityStats() {
     to: today,
   });
   const [stats, setStats] = useState<ActivityStat[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const supabase = createClientComponentClient();
+  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
 
   const loadStats = useCallback(async () => {
     if (!date?.from || !date?.to) return;
-
+    setIsLoading(true);
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        console.log("No user found");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("activities")
         .select(
@@ -67,14 +78,23 @@ export default function ActivityStats() {
           activity_type:activity_types(*)
         `
         )
+        .eq("user_id", userData.user.id)
         .gte("date", format(date.from, "yyyy-MM-dd"))
         .lte("date", format(date.to, "yyyy-MM-dd"));
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
-      if (data) {
+      if (data && data.length > 0) {
         const statsByType: { [key: string]: ActivityStat } = {};
         data.forEach((activity) => {
+          if (!activity.activity_type) {
+            console.log("Activity without type:", activity);
+            return;
+          }
+
           const type = activity.activity_type?.name || "Unknown";
           const startMinutes = getMinutesFromTime(activity.start_time);
           const endMinutes = getMinutesFromTime(activity.end_time);
@@ -96,19 +116,54 @@ export default function ActivityStats() {
             ...stat,
             duration: Math.round(stat.duration * 2) / 2,
           }));
+
         setStats(validStats);
+      } else {
+        console.log("No data found for the selected date range");
+        setStats([]);
       }
     } catch (err) {
       console.error("Error loading stats:", err);
+    } finally {
+      setIsLoading(false);
     }
   }, [date]);
+
+  const loadActivityTypes = useCallback(async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
+      const { data, error } = await supabase
+        .from("activity_types")
+        .select("*")
+        .eq("user_id", userData.user.id)
+        .order("name");
+
+      if (error) throw error;
+      if (data) {
+        setActivityTypes(data);
+      }
+    } catch (err) {
+      console.error("Error loading activity types:", err);
+    }
+  }, [supabase]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
+  useEffect(() => {
+    loadActivityTypes();
+  }, [loadActivityTypes]);
+
   return (
     <div className="space-y-8">
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-background/80 z-50">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
       <div className=" flex flex-col px-4 mt-4">
         <Popover>
           <PopoverTrigger asChild>

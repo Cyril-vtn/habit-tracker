@@ -26,25 +26,35 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useActivityManager } from "@/hooks/useActivityManager";
 import { useTimeSlots } from "@/hooks/useTimeSlots";
-import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Activity, ActivityType } from "@/types/activities";
-import { formatTimeForDisplay, getMinutesFromTime } from "@/utils/timeUtils";
+import {
+  formatTimeForDisplay,
+  getMinutesFromTime,
+  convertToUTC,
+} from "@/utils/timeUtils";
 import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActivityGrid } from "./ActivityGrid";
 import ActivityTypeManager from "./ActivityTypeManager";
 import { DisplayTimeSelector } from "./DisplayTimeSelector";
+import AuthForm from "./AuthForm";
+import { Loader } from "@/components/ui/loader";
+import { Loader2 } from "lucide-react";
 
 const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
 export default function HabitTracker() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const timeSlots = useTimeSlots();
-  const { activities, activityTypes, loadActivities, loadActivityTypes } =
-    useActivityManager(selectedDate);
-
+  const {
+    activities,
+    activityTypes,
+    loadActivities,
+    loadActivityTypes,
+    isLoading,
+  } = useActivityManager(selectedDate);
   const [formState, setFormState] = useState({
     startTime: "",
     endTime: "",
@@ -52,23 +62,20 @@ export default function HabitTracker() {
     notes: "",
     selectedType: "",
   });
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [typesUpdated, setTypesUpdated] = useState(false);
-
   const [dragState, setDragState] = useState({
     isDragging: false,
     dragStartSlot: null as string | null,
     dragEndSlot: null as string | null,
   });
-
   const [displayTimes, setDisplayTimes] = useState({
     startTime: "07:00 AM",
     endTime: "10:00 PM",
   });
-
   const [windowWidth, setWindowWidth] = useState(0);
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     setWindowWidth(window.innerWidth);
@@ -80,6 +87,39 @@ export default function HabitTracker() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      const savedTimes = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedTimes) {
+        const parsedTimes = JSON.parse(savedTimes);
+        setDisplayTimes(parsedTimes);
+        await loadActivities(selectedDate, parsedTimes);
+      } else {
+        await loadActivities(selectedDate);
+      }
+    };
+
+    init();
+  }, []);
+
+  useEffect(() => {
+    loadActivityTypes();
+    setTypesUpdated(false);
+  }, [typesUpdated, loadActivityTypes]);
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (dragState.isDragging) {
+        handleDragEnd();
+      }
+    };
+
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [dragState.isDragging]);
 
   const resetForm = () => {
     setSelectedDate(new Date());
@@ -93,33 +133,28 @@ export default function HabitTracker() {
   };
 
   const addActivity = async () => {
-    if (
-      !selectedDate ||
-      !formState.startTime ||
-      !formState.endTime ||
-      !formState.activityName ||
-      !formState.selectedType
-    ) {
-      console.error("Missing required fields");
-      return;
-    }
-
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        console.error("No user found");
+        return;
+      }
+
+      if (
+        !selectedDate ||
+        !formState.startTime ||
+        !formState.endTime ||
+        !formState.activityName ||
+        !formState.selectedType
+      ) {
+        console.error("Missing required fields");
+        return;
+      }
+
       const date = selectedDate.toISOString().split("T")[0];
-      const [startHours, startMinutes] = formState.startTime
-        .split(" ")[0]
-        .split(":")
-        .map(Number);
-      const [endHours, endMinutes] = formState.endTime
-        .split(" ")[0]
-        .split(":")
-        .map(Number);
 
-      const startDateTime = new Date(selectedDate);
-      startDateTime.setHours(startHours, startMinutes, 0);
-
-      const endDateTime = new Date(selectedDate);
-      endDateTime.setHours(endHours, endMinutes, 0);
+      const startDateTime = convertToUTC(selectedDate, formState.startTime);
+      const endDateTime = convertToUTC(selectedDate, formState.endTime);
 
       const { data, error } = await supabase
         .from("activities")
@@ -131,6 +166,7 @@ export default function HabitTracker() {
             activity_name: formState.activityName,
             activity_type_id: formState.selectedType,
             notes: formState.notes || null,
+            user_id: userData.user.id,
           },
         ])
         .select("*")
@@ -184,28 +220,6 @@ export default function HabitTracker() {
       console.error("Error deleting activity:", err);
     }
   };
-
-  useEffect(() => {
-    loadActivities(selectedDate, displayTimes);
-  }, [selectedDate, displayTimes, loadActivities]);
-
-  useEffect(() => {
-    loadActivityTypes();
-    setTypesUpdated(false);
-  }, [typesUpdated, loadActivityTypes]);
-
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      if (dragState.isDragging) {
-        handleDragEnd();
-      }
-    };
-
-    window.addEventListener("mouseup", handleGlobalMouseUp);
-    return () => {
-      window.removeEventListener("mouseup", handleGlobalMouseUp);
-    };
-  }, [dragState.isDragging]);
 
   const handlePreviousDay = () => {
     const newDate = new Date(selectedDate);
@@ -297,17 +311,13 @@ export default function HabitTracker() {
     loadActivities(selectedDate, newDisplayTimes);
   };
 
-  useEffect(() => {
-    const savedTimes = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedTimes) {
-      const parsedTimes = JSON.parse(savedTimes);
-      setDisplayTimes(parsedTimes);
-      loadActivities(selectedDate, parsedTimes);
-    }
-  }, []);
-
   return (
     <div className="p-4">
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-background/80 z-50">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
       <div className="space-y-4 sm:space-y-8">
         <div className="flex flex-row items-start sm:items-center justify-between gap-4">
           <ActivityTypeManager onTypeChange={handleTypeChange} />
@@ -323,26 +333,57 @@ export default function HabitTracker() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Activity Name</label>
+                  <Input
+                    value={formState.activityName}
+                    onChange={(e) =>
+                      setFormState({
+                        ...formState,
+                        activityName: e.target.value,
+                      })
+                    }
+                    placeholder="Enter activity name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Activity Type</label>
+                  <Select
+                    value={formState.selectedType}
+                    onValueChange={(value) =>
+                      setFormState({ ...formState, selectedType: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activityTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Activity Type</label>
+                    <label className="text-sm font-medium">Start Time</label>
                     <Select
-                      value={formState.selectedType}
-                      onValueChange={(type) =>
-                        setFormState({ ...formState, selectedType: type })
+                      value={formState.startTime}
+                      onValueChange={(value) =>
+                        setFormState({ ...formState, startTime: value })
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue>
-                          {activityTypes.find(
-                            (type) => type.id === formState.selectedType
-                          )?.name || "Select a type"}
-                        </SelectValue>
+                        <SelectValue placeholder="Start time" />
                       </SelectTrigger>
                       <SelectContent>
-                        {activityTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name}
+                        {timeSlots.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -350,79 +391,42 @@ export default function HabitTracker() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Activity Name</label>
-                    <Input
-                      value={formState.activityName}
-                      onChange={(e) =>
-                        setFormState({
-                          ...formState,
-                          activityName: e.target.value,
-                        })
+                    <label className="text-sm font-medium">End Time</label>
+                    <Select
+                      value={formState.endTime}
+                      onValueChange={(time) =>
+                        setFormState({ ...formState, endTime: time })
                       }
-                      placeholder="Activity Name"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Start Time</label>
-                      <Select
-                        value={formState.startTime}
-                        onValueChange={(time) =>
-                          setFormState({ ...formState, startTime: time })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue>{formState.startTime}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeSlots.map((time) => (
-                            <SelectItem key={time} value={time}>
-                              {time}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">End Time</label>
-                      <Select
-                        value={formState.endTime}
-                        onValueChange={(time) =>
-                          setFormState({ ...formState, endTime: time })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue>{formState.endTime}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeSlots.map((time) => (
-                            <SelectItem key={time} value={time}>
-                              {time}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Notes</label>
-                    <Textarea
-                      value={formState.notes}
-                      onChange={(e) =>
-                        setFormState({ ...formState, notes: e.target.value })
-                      }
-                      placeholder="Notes (optional)"
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue>{formState.endTime}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                <Button onClick={addActivity} className="mt-4">
-                  Add Activity
-                </Button>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Notes</label>
+                  <Textarea
+                    value={formState.notes}
+                    onChange={(e) =>
+                      setFormState({ ...formState, notes: e.target.value })
+                    }
+                    placeholder="Notes (optional)"
+                  />
+                </div>
               </div>
+
+              <Button onClick={addActivity} className="mt-4">
+                Add Activity
+              </Button>
             </DialogContent>
           </Dialog>
         </div>
@@ -535,35 +539,11 @@ const EditActivityDialog = ({
 
   const handleSave = async () => {
     try {
-      // Créer une date de base à partir de la date de l'activité
       const baseDate = new Date(activity.date);
 
-      // Traiter l'heure de début
-      const [startTime, startPeriod] = editedStartTime.split(" ");
-      const [startHours, startMinutes] = startTime.split(":").map(Number);
-      let startHours24 = startHours;
-      if (startPeriod === "PM" && startHours !== 12) {
-        startHours24 = startHours + 12;
-      } else if (startPeriod === "AM" && startHours === 12) {
-        startHours24 = 0;
-      }
-
-      // Traiter l'heure de fin
-      const [endTime, endPeriod] = editedEndTime.split(" ");
-      const [endHours, endMinutes] = endTime.split(":").map(Number);
-      let endHours24 = endHours;
-      if (endPeriod === "PM" && endHours !== 12) {
-        endHours24 = endHours + 12;
-      } else if (endPeriod === "AM" && endHours === 12) {
-        endHours24 = 0;
-      }
-
-      // Créer les dates finales
-      const startDateTime = new Date(baseDate);
-      startDateTime.setHours(startHours24, startMinutes, 0, 0);
-
-      const endDateTime = new Date(baseDate);
-      endDateTime.setHours(endHours24, endMinutes, 0, 0);
+      // Utiliser la nouvelle fonction de conversion
+      const startDateTime = convertToUTC(baseDate, editedStartTime);
+      const endDateTime = convertToUTC(baseDate, editedEndTime);
 
       await onSave({
         activity_name: editedName,
