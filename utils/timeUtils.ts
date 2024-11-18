@@ -2,14 +2,9 @@
 const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export const formatTimeForDisplay = (timestamp: string): string => {
-  // Convertir le timestamp UTC en heure locale
   const date = new Date(timestamp);
-  const localDate = new Date(
-    date.toLocaleString("en-US", { timeZone: getUserTimezone() })
-  );
-
-  const hours = localDate.getHours();
-  const minutes = localDate.getMinutes();
+  const hours = date.getUTCHours();
+  const minutes = date.getUTCMinutes();
   const period = hours >= 12 ? "PM" : "AM";
   const displayHours = hours % 12 || 12;
   const displayMinutes = minutes.toString().padStart(2, "0");
@@ -21,11 +16,8 @@ export const getMinutesFromTime = (time: string): number => {
   try {
     if (time.includes("T")) {
       // Pour les timestamps ISO
-      const utcDate = new Date(time);
-      const localDate = new Date(
-        utcDate.toLocaleString("en-US", { timeZone: getUserTimezone() })
-      );
-      return localDate.getHours() * 60 + localDate.getMinutes();
+      const date = new Date(time);
+      return date.getUTCHours() * 60 + date.getUTCMinutes();
     }
     // Pour les heures au format "HH:MM AM/PM"
     const [timeStr, period] = time.split(" ");
@@ -41,7 +33,7 @@ export const getMinutesFromTime = (time: string): number => {
     return hours24 * 60 + minutes;
   } catch (error) {
     console.error("Error in getMinutesFromTime:", error);
-    return 0; // Valeur par défaut en cas d'erreur
+    return 0;
   }
 };
 
@@ -57,24 +49,18 @@ export const convertToUTC = (baseDate: Date, timeString: string): Date => {
     hours24 = 0;
   }
 
-  // Créer une date locale avec les heures spécifiées
-  const localDate = new Date(baseDate);
-  localDate.setHours(hours24, minutes, 0, 0);
-
-  // Convertir en UTC en tenant compte du décalage horaire
-  const utcTimestamp = Date.UTC(
-    localDate.getFullYear(),
-    localDate.getMonth(),
-    localDate.getDate(),
-    hours24,
-    minutes,
-    0,
-    0
+  // Créer une date UTC directement avec les heures spécifiées
+  return new Date(
+    Date.UTC(
+      baseDate.getFullYear(),
+      baseDate.getMonth(),
+      baseDate.getDate(),
+      hours24,
+      minutes,
+      0,
+      0
+    )
   );
-
-  // Ajuster pour le décalage horaire local
-  const offsetInMinutes = localDate.getTimezoneOffset();
-  return new Date(utcTimestamp + offsetInMinutes * 60 * 1000);
 };
 
 export const getBgColor = (hexColor: string | undefined) => {
