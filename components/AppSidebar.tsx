@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Home, PieChart, LogOut } from "lucide-react";
+import { Home, PieChart, LogOut, User } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 
@@ -23,6 +23,11 @@ const navItems = [
     href: "/stats",
     icon: PieChart,
     label: "Chart",
+  },
+  {
+    href: "/profile",
+    icon: User,
+    label: "Profile",
   },
 ];
 
