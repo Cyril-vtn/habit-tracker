@@ -22,7 +22,7 @@ import {
 } from "recharts";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Loader2 } from "lucide-react";
-import { ActivityType } from "@/types/activities";
+import { useAuth } from "@/context/AuthContext";
 
 interface ActivityStat {
   type: string;
@@ -50,6 +50,7 @@ const calculateDuration = (
 };
 
 export default function ActivityStats() {
+  const { user } = useAuth();
   const today = new Date();
   const [date, setDate] = useState<DateRange | undefined>({
     from: today,
@@ -58,14 +59,14 @@ export default function ActivityStats() {
   const [stats, setStats] = useState<ActivityStat[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const supabase = createClientComponentClient();
-  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
 
   const loadStats = useCallback(async () => {
     if (!date?.from || !date?.to) return;
+    if (isLoading) return;
     setIsLoading(true);
+
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
+      if (!user) {
         console.log("No user found");
         return;
       }
@@ -78,7 +79,7 @@ export default function ActivityStats() {
           activity_type:activity_types(*)
         `
         )
-        .eq("user_id", userData.user.id)
+        .eq("user_id", user.id)
         .gte("date", format(date.from, "yyyy-MM-dd"))
         .lte("date", format(date.to, "yyyy-MM-dd"));
 
@@ -127,35 +128,11 @@ export default function ActivityStats() {
     } finally {
       setIsLoading(false);
     }
-  }, [date]);
-
-  const loadActivityTypes = useCallback(async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-
-      const { data, error } = await supabase
-        .from("activity_types")
-        .select("*")
-        .eq("user_id", userData.user.id)
-        .order("name");
-
-      if (error) throw error;
-      if (data) {
-        setActivityTypes(data);
-      }
-    } catch (err) {
-      console.error("Error loading activity types:", err);
-    }
-  }, [supabase]);
+  }, [date, user]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
-
-  useEffect(() => {
-    loadActivityTypes();
-  }, [loadActivityTypes]);
 
   return (
     <div className="space-y-8">
@@ -202,7 +179,7 @@ export default function ActivityStats() {
         </Popover>
       </div>
 
-      {stats.length > 0 && (
+      {stats.length > 0 ? (
         <div className="px-6 space-y-2">
           <h2 className="text-lg sm:text-xl font-bold mb-4">
             Activity Distribution
@@ -233,6 +210,10 @@ export default function ActivityStats() {
               </PieChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      ) : (
+        <div className="px-6 text-center text-sm text-muted-foreground mt-4">
+          No activity data found
         </div>
       )}
     </div>

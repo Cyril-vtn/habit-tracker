@@ -1,25 +1,8 @@
 import ActivityStats from "@/components/ActivityStats";
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import AuthForm from "@/components/AuthForm";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export default async function StatsPage() {
-  const cookieStore = cookies();
-  const supabase = createServerComponentClient({ cookies: () => cookieStore });
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <AuthForm />
-      </div>
-    );
-  }
-
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full">

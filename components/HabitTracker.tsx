@@ -24,36 +24,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/context/AuthContext";
 import { useActivityManager } from "@/hooks/useActivityManager";
 import { useTimeSlots } from "@/hooks/useTimeSlots";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Activity, ActivityType } from "@/types/activities";
 import {
+  convertToUTC,
   formatTimeForDisplay,
   getMinutesFromTime,
-  convertToUTC,
 } from "@/utils/timeUtils";
 import { format } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActivityGrid } from "./ActivityGrid";
 import ActivityTypeManager from "./ActivityTypeManager";
 import { DisplayTimeSelector } from "./DisplayTimeSelector";
-import AuthForm from "./AuthForm";
-import { Loader } from "@/components/ui/loader";
-import { Loader2 } from "lucide-react";
 
 const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
 export default function HabitTracker() {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const timeSlots = useTimeSlots();
   const {
     activities,
     activityTypes,
-    loadActivities,
-    loadActivityTypes,
     isLoading,
+    addActivity,
+    updateActivity,
+    deleteActivity,
   } = useActivityManager(selectedDate);
   const [formState, setFormState] = useState({
     startTime: "",
@@ -64,7 +63,6 @@ export default function HabitTracker() {
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
-  const [typesUpdated, setTypesUpdated] = useState(false);
   const [dragState, setDragState] = useState({
     isDragging: false,
     dragStartSlot: null as string | null,
@@ -75,7 +73,6 @@ export default function HabitTracker() {
     endTime: "10:00 PM",
   });
   const [windowWidth, setWindowWidth] = useState(0);
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     setWindowWidth(window.innerWidth);
@@ -89,24 +86,12 @@ export default function HabitTracker() {
   }, []);
 
   useEffect(() => {
-    const init = async () => {
-      const savedTimes = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedTimes) {
-        const parsedTimes = JSON.parse(savedTimes);
-        setDisplayTimes(parsedTimes);
-        await loadActivities(selectedDate, parsedTimes);
-      } else {
-        await loadActivities(selectedDate);
-      }
-    };
-
-    init();
+    const savedTimes = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedTimes) {
+      const parsedTimes = JSON.parse(savedTimes);
+      setDisplayTimes(parsedTimes);
+    }
   }, []);
-
-  useEffect(() => {
-    loadActivityTypes();
-    setTypesUpdated(false);
-  }, [typesUpdated, loadActivityTypes]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -122,7 +107,6 @@ export default function HabitTracker() {
   }, [dragState.isDragging]);
 
   const resetForm = () => {
-    setSelectedDate(new Date());
     setFormState({
       startTime: "",
       endTime: "",
@@ -132,92 +116,19 @@ export default function HabitTracker() {
     });
   };
 
-  const addActivity = async () => {
+  const handleAddActivity = async (formData: typeof formState) => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        console.error("No user found");
-        return;
-      }
-
-      if (
-        !selectedDate ||
-        !formState.startTime ||
-        !formState.endTime ||
-        !formState.activityName ||
-        !formState.selectedType
-      ) {
-        console.error("Missing required fields");
-        return;
-      }
-
-      const date = selectedDate.toISOString().split("T")[0];
-
-      const startDateTime = convertToUTC(selectedDate, formState.startTime);
-      const endDateTime = convertToUTC(selectedDate, formState.endTime);
-
-      const { data, error } = await supabase
-        .from("activities")
-        .insert([
-          {
-            date: date,
-            start_time: startDateTime.toISOString(),
-            end_time: endDateTime.toISOString(),
-            activity_name: formState.activityName,
-            activity_type_id: formState.selectedType,
-            notes: formState.notes || null,
-            user_id: userData.user.id,
-          },
-        ])
-        .select("*")
-        .single();
-
-      if (error) throw error;
-      if (data) {
-        await loadActivities(selectedDate);
-        setIsDialogOpen(false);
-        resetForm();
-      }
-    } catch (err) {
-      console.error("Error in addActivity:", err);
-    }
-  };
-
-  const updateActivity = async (updatedFields: Partial<Activity>) => {
-    if (!editingActivity) return;
-
-    try {
-      const fieldsToUpdate = {
-        activity_name: updatedFields.activity_name,
-        activity_type_id: updatedFields.activity_type_id,
-        notes: updatedFields.notes,
-        start_time: updatedFields.start_time,
-        end_time: updatedFields.end_time,
-      };
-
-      const { error } = await supabase
-        .from("activities")
-        .update(fieldsToUpdate)
-        .eq("id", editingActivity.id);
-
-      if (error) throw error;
-      loadActivities(selectedDate);
-      setEditingActivity(null);
-    } catch (err) {
-      console.error("Error updating activity:", err);
-    }
-  };
-
-  const deleteActivity = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this activity?")) return;
-
-    try {
-      const { error } = await supabase.from("activities").delete().eq("id", id);
-
-      if (error) throw error;
-      loadActivities(selectedDate);
-    } catch (err) {
-      console.error("Error deleting activity:", err);
+      await addActivity({
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        activityName: formData.activityName,
+        activityTypeId: formData.selectedType,
+        notes: formData.notes,
+      });
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error("Error adding activity:", error);
     }
   };
 
@@ -231,10 +142,6 @@ export default function HabitTracker() {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + 1);
     setSelectedDate(newDate);
-  };
-
-  const handleTypeChange = () => {
-    setTypesUpdated(true);
   };
 
   const handleDragStart = (timeSlot: string) => {
@@ -308,7 +215,6 @@ export default function HabitTracker() {
     };
     setDisplayTimes(newDisplayTimes);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newDisplayTimes));
-    loadActivities(selectedDate, newDisplayTimes);
   };
 
   return (
@@ -320,7 +226,7 @@ export default function HabitTracker() {
       )}
       <div className="space-y-4 sm:space-y-8">
         <div className="flex flex-row items-start sm:items-center justify-between gap-4">
-          <ActivityTypeManager onTypeChange={handleTypeChange} />
+          <ActivityTypeManager activityTypes={activityTypes} />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>Add Activity</Button>
@@ -424,7 +330,10 @@ export default function HabitTracker() {
                 </div>
               </div>
 
-              <Button onClick={addActivity} className="mt-4">
+              <Button
+                onClick={() => handleAddActivity(formState)}
+                className="mt-4"
+              >
                 Add Activity
               </Button>
             </DialogContent>
@@ -491,7 +400,9 @@ export default function HabitTracker() {
           activity={editingActivity}
           isOpen={!!editingActivity}
           onClose={() => setEditingActivity(null)}
-          onSave={updateActivity}
+          onSave={(updatedFields) =>
+            updateActivity(editingActivity.id, updatedFields)
+          }
           activityTypes={activityTypes}
           timeSlots={timeSlots}
           onDeleteActivity={deleteActivity}
@@ -513,7 +424,7 @@ const EditActivityDialog = ({
   activity: Activity;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedActivity: Partial<Activity>) => Promise<void>;
+  onSave: (updatedFields: Partial<Activity>) => Promise<void>;
   activityTypes: ActivityType[];
   timeSlots: string[];
   onDeleteActivity: (id: string) => void;

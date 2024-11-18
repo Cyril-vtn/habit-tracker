@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,15 +13,16 @@ import { Input } from "@/components/ui/input";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { ActivityType } from "@/types/activities";
 import { Edit2, Trash2, Plus, Save } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface ActivityTypeManagerProps {
-  onTypeChange?: () => void;
+  activityTypes: ActivityType[];
 }
 
 export default function ActivityTypeManager({
-  onTypeChange,
+  activityTypes,
 }: ActivityTypeManagerProps) {
-  const [types, setTypes] = useState<ActivityType[]>([]);
+  const { user } = useAuth();
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeColor, setNewTypeColor] = useState("#000000");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -29,28 +30,6 @@ export default function ActivityTypeManager({
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const supabase = createClientComponentClient();
-
-  const loadTypes = async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-
-      const { data, error } = await supabase
-        .from("activity_types")
-        .select("*")
-        .eq("user_id", userData.user.id)
-        .order("name");
-
-      if (error) throw error;
-      if (data) setTypes(data);
-    } catch (err) {
-      console.error("Error loading types:", err);
-    }
-  };
-
-  useEffect(() => {
-    loadTypes();
-  }, []);
 
   const startEditing = (type: ActivityType) => {
     setEditingId(type.id);
@@ -72,14 +51,6 @@ export default function ActivityTypeManager({
         .eq("id", id);
 
       if (error) throw error;
-
-      setTypes(
-        types.map((type) =>
-          type.id === id ? { ...type, name: editName, color: editColor } : type
-        )
-      );
-      cancelEditing();
-      onTypeChange?.();
     } catch (err) {
       console.error("Error updating activity type:", err);
     }
@@ -95,8 +66,6 @@ export default function ActivityTypeManager({
         .eq("id", id);
 
       if (error) throw error;
-      setTypes(types.filter((type) => type.id !== id));
-      if (onTypeChange) onTypeChange();
     } catch (err) {
       console.error("Error deleting activity type:", err);
     }
@@ -106,8 +75,7 @@ export default function ActivityTypeManager({
     if (!newTypeName) return;
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
+      if (!user) return;
 
       const { data, error } = await supabase
         .from("activity_types")
@@ -115,17 +83,15 @@ export default function ActivityTypeManager({
           {
             name: newTypeName,
             color: newTypeColor,
-            user_id: userData.user.id,
+            user_id: user.id,
           },
         ])
         .select();
 
       if (error) throw error;
       if (data && data[0]) {
-        setTypes([...types, data[0]]);
         setNewTypeName("");
         setNewTypeColor("#000000");
-        if (onTypeChange) onTypeChange();
         setIsDialogOpen(false);
       }
     } catch (err) {
@@ -145,7 +111,7 @@ export default function ActivityTypeManager({
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-3">
-              {types.map((type) => (
+              {activityTypes.map((type) => (
                 <div
                   key={type.id}
                   className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/10 transition-colors"

@@ -42,7 +42,7 @@ export function AppSidebar() {
         <h1 className="text-xl font-bold">Habit Tracker</h1>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
+        <SidebarGroup className="flex flex-col gap-2">
           {navItems.map((item) => (
             <SidebarMenuButton
               key={item.href}

@@ -1,108 +1,147 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Activity, ActivityType } from "@/types/activities";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { format } from "date-fns";
-import { getMinutesFromTime } from "@/utils/timeUtils";
+import { convertToUTC, getMinutesFromTime } from "@/utils/timeUtils";
+import { useAuth } from "@/context/AuthContext";
+
+const supabase = createClientComponentClient();
 
 export const useActivityManager = (selectedDate: Date) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const supabase = createClientComponentClient();
+  const { user } = useAuth();
+  const [hasLoadedTypes, setHasLoadedTypes] = useState(false);
+  const isLoadingRef = useRef(false);
 
-  const loadActivities = useCallback(
-    async (
-      date: Date,
-      displayTimes?: { startTime: string; endTime: string }
-    ) => {
-      setIsLoading(true);
-      try {
-        const formattedDate = format(date, "yyyy-MM-dd");
-        const { data: userData } = await supabase.auth.getUser();
+  const loadData = useCallback(async () => {
+    if (!user || isLoadingRef.current) return;
+    setIsLoading(true);
+    isLoadingRef.current = true;
 
-        if (!userData.user) {
-          console.log("No user found");
-          return;
-        }
-
-        let query = supabase
-          .from("activities")
-          .select(`*, activity_type:activity_types(*)`)
-          .eq("date", formattedDate)
-          .eq("user_id", userData.user.id);
-
-        if (displayTimes) {
-          const displayStartMinutes = getMinutesFromTime(
-            displayTimes.startTime
-          );
-          const displayEndMinutes = getMinutesFromTime(displayTimes.endTime);
-
-          const startTimeISO = new Date(date);
-          startTimeISO.setHours(Math.floor(displayStartMinutes / 60));
-          startTimeISO.setMinutes(displayStartMinutes % 60);
-
-          const endTimeISO = new Date(date);
-          endTimeISO.setHours(Math.floor(displayEndMinutes / 60));
-          endTimeISO.setMinutes(displayEndMinutes % 60);
-
-          query = query.or(
-            `and(start_time.lte."${endTimeISO.toISOString()}",end_time.gte."${startTimeISO.toISOString()}")`
-          );
-        }
-
-        const { data, error } = await query.order("start_time", {
-          ascending: true,
-        });
-
-        if (error) throw error;
-        if (data) {
-          setActivities(data);
-        }
-      } catch (err) {
-        console.error("Error loading activities:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
-
-  const loadActivityTypes = useCallback(async () => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const formattedDate = format(selectedDate, "yyyy-MM-dd");
 
-      if (!userData.user) return;
+      if (!hasLoadedTypes) {
+        const typesResponse = await supabase
+          .from("activity_types")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("name");
+
+        if (typesResponse.data) {
+          setActivityTypes(typesResponse.data);
+          setHasLoadedTypes(true);
+        }
+      }
+
+      const activitiesResponse = await supabase
+        .from("activities")
+        .select(`*, activity_type:activity_types(*)`)
+        .eq("date", formattedDate)
+        .eq("user_id", user.id);
+
+      if (activitiesResponse.data) {
+        setActivities(activitiesResponse.data);
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setIsLoading(false);
+      isLoadingRef.current = false;
+    }
+  }, [user, selectedDate, hasLoadedTypes]);
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [loadData, user]);
+
+  const addActivity = async (activityData: {
+    startTime: string;
+    endTime: string;
+    activityName: string;
+    activityTypeId: string;
+    notes?: string;
+  }) => {
+    if (!user) return;
+
+    try {
+      const date = selectedDate.toISOString().split("T")[0];
+      const startDateTime = convertToUTC(selectedDate, activityData.startTime);
+      const endDateTime = convertToUTC(selectedDate, activityData.endTime);
 
       const { data, error } = await supabase
-        .from("activity_types")
+        .from("activities")
+        .insert([
+          {
+            date,
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
+            activity_name: activityData.activityName,
+            activity_type_id: activityData.activityTypeId,
+            notes: activityData.notes || null,
+            user_id: user.id,
+          },
+        ])
         .select("*")
-        .eq("user_id", userData.user.id)
-        .order("name");
+        .single();
 
       if (error) throw error;
-      if (data) setActivityTypes(data);
+      setActivities((prevActivities) => [...prevActivities, data]);
+      return data;
     } catch (err) {
-      console.error("Error loading activity types:", err);
+      console.error("Error in addActivity:", err);
+      throw err;
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    loadActivityTypes();
-  }, [loadActivityTypes]);
+  const updateActivity = async (
+    id: string,
+    updatedFields: Partial<Activity>
+  ) => {
+    try {
+      const { error } = await supabase
+        .from("activities")
+        .update(updatedFields)
+        .eq("id", id);
 
-  useEffect(() => {
-    const loadData = async () => {
-      await loadActivityTypes();
-      await loadActivities(selectedDate);
-    };
-    loadData();
-  }, [selectedDate]);
+      if (error) throw error;
+      setActivities((prevActivities) =>
+        prevActivities.map((activity) =>
+          activity.id === id ? { ...activity, ...updatedFields } : activity
+        )
+      );
+    } catch (err) {
+      console.error("Error updating activity:", err);
+      throw err;
+    }
+  };
+
+  const deleteActivity = async (id: string) => {
+    try {
+      const { error } = await supabase.from("activities").delete().eq("id", id);
+
+      if (error) throw error;
+      setActivities((prevActivities) =>
+        prevActivities.filter((activity) => activity.id !== id)
+      );
+    } catch (err) {
+      console.error("Error deleting activity:", err);
+      throw err;
+    }
+  };
 
   return {
     activities,
     activityTypes,
-    loadActivities,
-    loadActivityTypes,
+    loadActivities: loadData,
     isLoading,
+    user,
+    addActivity,
+    updateActivity,
+    deleteActivity,
   };
 };
