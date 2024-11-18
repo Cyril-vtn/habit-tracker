@@ -13,6 +13,7 @@ import {
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export function ProfileForm() {
   const { user } = useAuth();
@@ -24,35 +25,38 @@ export function ProfileForm() {
     text: string;
   } | null>(null);
   const supabase = createClientComponentClient();
+  const { toast } = useToast();
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setMessage({
-        type: "error",
-        text: "Passwords do not match",
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Passwords do not match",
       });
       return;
     }
 
     setIsLoading(true);
-    setMessage(null);
 
     try {
       const { error } = await supabase.auth.updateUser({ password });
 
       if (error) throw error;
 
-      setMessage({
-        type: "success",
-        text: "Password updated successfully",
+      toast({
+        title: "Success",
+        description: "Password updated successfully",
       });
+
       setPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      setMessage({
-        type: "error",
-        text: error.message,
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
       });
     } finally {
       setIsLoading(false);

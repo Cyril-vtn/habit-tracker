@@ -4,10 +4,12 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { format } from "date-fns";
 import { convertToUTC, getMinutesFromTime } from "@/utils/timeUtils";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "./use-toast";
 
 const supabase = createClientComponentClient();
 
 export const useActivityManager = (selectedDate: Date) => {
+  const { toast } = useToast();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +49,11 @@ export const useActivityManager = (selectedDate: Date) => {
       }
     } catch (error) {
       console.error("Error loading data:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load activities",
+      });
     } finally {
       setIsLoading(false);
       isLoadingRef.current = false;
@@ -91,9 +98,18 @@ export const useActivityManager = (selectedDate: Date) => {
 
       if (error) throw error;
       setActivities((prevActivities) => [...prevActivities, data]);
+      toast({
+        title: "Success",
+        description: "Activity added successfully",
+      });
       return data;
     } catch (err) {
       console.error("Error in addActivity:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add activity",
+      });
       throw err;
     }
   };
@@ -114,8 +130,17 @@ export const useActivityManager = (selectedDate: Date) => {
           activity.id === id ? { ...activity, ...updatedFields } : activity
         )
       );
+      toast({
+        title: "Success",
+        description: "Activity updated successfully",
+      });
     } catch (err) {
       console.error("Error updating activity:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update activity",
+      });
       throw err;
     }
   };
@@ -128,8 +153,17 @@ export const useActivityManager = (selectedDate: Date) => {
       setActivities((prevActivities) =>
         prevActivities.filter((activity) => activity.id !== id)
       );
+      toast({
+        title: "Success",
+        description: "Activity deleted successfully",
+      });
     } catch (err) {
       console.error("Error deleting activity:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete activity",
+      });
       throw err;
     }
   };

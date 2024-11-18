@@ -14,6 +14,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { ActivityType } from "@/types/activities";
 import { Edit2, Trash2, Plus, Save } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface ActivityTypeManagerProps {
   activityTypes: ActivityType[];
@@ -30,6 +31,7 @@ export default function ActivityTypeManager({
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const supabase = createClientComponentClient();
+  const { toast } = useToast();
 
   const startEditing = (type: ActivityType) => {
     setEditingId(type.id);
@@ -51,7 +53,18 @@ export default function ActivityTypeManager({
         .eq("id", id);
 
       if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Activity type updated successfully",
+      });
+      cancelEditing();
     } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update activity type",
+      });
       console.error("Error updating activity type:", err);
     }
   };
@@ -66,7 +79,17 @@ export default function ActivityTypeManager({
         .eq("id", id);
 
       if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Activity type deleted successfully",
+      });
     } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete activity type",
+      });
       console.error("Error deleting activity type:", err);
     }
   };
@@ -90,11 +113,20 @@ export default function ActivityTypeManager({
 
       if (error) throw error;
       if (data && data[0]) {
+        toast({
+          title: "Success",
+          description: "Activity type added successfully",
+        });
         setNewTypeName("");
         setNewTypeColor("#000000");
         setIsDialogOpen(false);
       }
     } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add activity type",
+      });
       console.error("Error adding activity type:", err);
     }
   };

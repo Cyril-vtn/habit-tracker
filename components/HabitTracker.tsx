@@ -24,7 +24,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/context/AuthContext";
 import { useActivityManager } from "@/hooks/useActivityManager";
 import { useTimeSlots } from "@/hooks/useTimeSlots";
 import { Activity, ActivityType } from "@/types/activities";
@@ -43,7 +42,6 @@ import { DisplayTimeSelector } from "./DisplayTimeSelector";
 const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
 export default function HabitTracker() {
-  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const timeSlots = useTimeSlots();
   const {
@@ -451,8 +449,6 @@ const EditActivityDialog = ({
   const handleSave = async () => {
     try {
       const baseDate = new Date(activity.date);
-
-      // Utiliser la nouvelle fonction de conversion
       const startDateTime = convertToUTC(baseDate, editedStartTime);
       const endDateTime = convertToUTC(baseDate, editedEndTime);
 
@@ -463,10 +459,18 @@ const EditActivityDialog = ({
         notes: editedNotes,
         activity_type_id: editedTypeId,
       });
-
       onClose();
     } catch (error) {
       console.error("Error saving activity:", error);
+    }
+  };
+
+  const handleDelete = () => {
+    try {
+      onDeleteActivity(activity.id);
+      onClose();
+    } catch (error) {
+      console.error("Error deleting activity:", error);
     }
   };
 
@@ -558,13 +562,7 @@ const EditActivityDialog = ({
 
           <div className="mt-4 flex flex-col gap-2">
             <Button onClick={handleSave}>Save Changes</Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                onDeleteActivity(activity.id);
-                onClose();
-              }}
-            >
+            <Button variant="destructive" onClick={handleDelete}>
               Delete Activity
             </Button>
           </div>
