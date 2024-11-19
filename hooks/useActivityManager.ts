@@ -177,5 +177,6 @@ export const useActivityManager = (selectedDate: Date) => {
     addActivity,
     updateActivity,
     deleteActivity,
+    setActivityTypes,
   };
 };

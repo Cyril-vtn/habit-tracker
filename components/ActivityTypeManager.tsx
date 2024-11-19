@@ -26,16 +26,18 @@ import {
 import { ActivityType } from "@/types/activities";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Pencil, Save, X } from "lucide-react";
+import { Pencil, Save, X, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 interface ActivityTypeManagerProps {
   activityTypes: ActivityType[];
+  onActivityTypesChange: (types: ActivityType[]) => void;
 }
 
 export default function ActivityTypeManager({
   activityTypes,
+  onActivityTypesChange,
 }: ActivityTypeManagerProps) {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -74,11 +76,15 @@ export default function ActivityTypeManager({
 
   const handleAddType = async (data: ActivityTypeInput) => {
     try {
-      const { error } = await supabase
+      const { data: newType, error } = await supabase
         .from("activity_types")
-        .insert([{ name: data.name, color: data.color, user_id: user?.id }]);
+        .insert([{ name: data.name, color: data.color, user_id: user?.id }])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      onActivityTypesChange([...activityTypes, newType]);
 
       toast({
         title: "Success",
@@ -127,6 +133,30 @@ export default function ActivityTypeManager({
       });
       editForm.reset();
       setEditingId(null);
+    }
+  };
+
+  const deleteActivityType = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("activity_types")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      onActivityTypesChange(activityTypes.filter((type) => type.id !== id));
+
+      toast({
+        title: "Success",
+        description: "Activity type deleted successfully",
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete activity type",
+      });
     }
   };
 
@@ -181,7 +211,30 @@ export default function ActivityTypeManager({
                 key={type.id}
                 className="flex items-center gap-3 p-3 rounded-lg border"
               >
-                {editingId === type.id ? (
+                {!editingId ? (
+                  <>
+                    <div className="flex-1">{type.name}</div>
+                    <div
+                      className="w-6 h-6 rounded-full"
+                      style={{ backgroundColor: type.color || "#000000" }}
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => startEditing(type)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => deleteActivityType(type.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
                   <Form {...editForm}>
                     <form
                       onSubmit={editForm.handleSubmit((data) =>
@@ -226,21 +279,6 @@ export default function ActivityTypeManager({
                       </Button>
                     </form>
                   </Form>
-                ) : (
-                  <>
-                    <div className="flex-1">{type.name}</div>
-                    <div
-                      className="w-6 h-6 rounded-full"
-                      style={{ backgroundColor: type.color || "#000000" }}
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => startEditing(type)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </>
                 )}
               </div>
             ))}
