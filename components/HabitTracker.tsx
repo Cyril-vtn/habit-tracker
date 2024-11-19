@@ -49,6 +49,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
@@ -62,6 +67,7 @@ export default function HabitTracker() {
     addActivity,
     updateActivity,
     deleteActivity,
+    setActivityTypes,
   } = useActivityManager(selectedDate);
   const [formState, setFormState] = useState({
     startTime: "",
@@ -201,16 +207,12 @@ export default function HabitTracker() {
       const finalStartTime = timeSlots[Math.min(startIdx, endIdx)];
       const finalEndTime = timeSlots[Math.max(startIdx, endIdx)];
 
-      setFormState({
-        ...formState,
-        startTime: finalStartTime,
-        endTime: finalEndTime,
-      });
+      form.setValue("start_time", finalStartTime);
+      form.setValue("end_time", finalEndTime);
       setIsDialogOpen(true);
     }
 
     setDragState({
-      ...dragState,
       isDragging: false,
       dragStartSlot: null,
       dragEndSlot: null,
@@ -254,6 +256,10 @@ export default function HabitTracker() {
     }
   };
 
+  const handleActivityTypesChange = (newTypes: ActivityType[]) => {
+    setActivityTypes(newTypes);
+  };
+
   return (
     <div className="p-4">
       {isLoading && (
@@ -263,7 +269,10 @@ export default function HabitTracker() {
       )}
       <div className="space-y-4 sm:space-y-8">
         <div className="flex flex-row items-start sm:items-center justify-between gap-4">
-          <ActivityTypeManager activityTypes={activityTypes} />
+          <ActivityTypeManager
+            activityTypes={activityTypes}
+            onActivityTypesChange={handleActivityTypesChange}
+          />
           <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
             <DialogTrigger asChild>
               <Button>Add Activity</Button>
@@ -489,6 +498,9 @@ const EditActivityDialog = ({
     resolver: zodResolver(activitySchema),
   });
 
+  const formValues = form.watch();
+  const [hasChanges, setHasChanges] = useState(false);
+
   useEffect(() => {
     if (activity) {
       form.reset({
@@ -500,6 +512,24 @@ const EditActivityDialog = ({
       });
     }
   }, [activity, form]);
+
+  useEffect(() => {
+    const originalValues = {
+      activity_name: activity.activity_name,
+      start_time: formatTimeForDisplay(activity.start_time),
+      end_time: formatTimeForDisplay(activity.end_time),
+      activity_type_id: activity.activity_type_id,
+      notes: activity.notes || "",
+    };
+
+    const hasFormChanges = Object.keys(originalValues).some(
+      (key) =>
+        formValues[key as keyof ActivityInput] !==
+        originalValues[key as keyof ActivityInput]
+    );
+
+    setHasChanges(hasFormChanges);
+  }, [formValues, activity]);
 
   const handleSave = async (data: ActivityInput) => {
     try {
@@ -640,7 +670,24 @@ const EditActivityDialog = ({
               )}
             />
             <div className="mt-4 flex flex-col gap-2">
-              <Button type="submit">Save Changes</Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Button
+                      type="submit"
+                      disabled={!hasChanges}
+                      className="w-full"
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                {!hasChanges && (
+                  <TooltipContent>
+                    <p>No change has been made to this activity</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
               <Button
                 variant="destructive"
                 onClick={() => onDeleteActivity(activity.id)}
