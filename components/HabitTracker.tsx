@@ -38,6 +38,17 @@ import { useEffect, useState } from "react";
 import { ActivityGrid } from "./ActivityGrid";
 import ActivityTypeManager from "./ActivityTypeManager";
 import { DisplayTimeSelector } from "./DisplayTimeSelector";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { activitySchema, type ActivityInput } from "@/lib/validations/activity";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
@@ -114,17 +125,32 @@ export default function HabitTracker() {
     });
   };
 
-  const handleAddActivity = async (formData: typeof formState) => {
+  const form = useForm<ActivityInput>({
+    resolver: zodResolver(activitySchema),
+    defaultValues: {
+      activity_name: "",
+      activity_type_id: "",
+      start_time: "",
+      end_time: "",
+      notes: "",
+    },
+  });
+
+  const handleAddActivity = async (data: ActivityInput) => {
     try {
+      const startDateTime = convertToUTC(selectedDate, data.start_time);
+      const endDateTime = convertToUTC(selectedDate, data.end_time);
+
       await addActivity({
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        activityName: formData.activityName,
-        activityTypeId: formData.selectedType,
-        notes: formData.notes,
+        activityName: data.activity_name,
+        activityTypeId: data.activity_type_id,
+        startTime: formatTimeForDisplay(startDateTime.toISOString()),
+        endTime: formatTimeForDisplay(endDateTime.toISOString()),
+        notes: data.notes,
       });
+
+      form.reset();
       setIsDialogOpen(false);
-      resetForm();
     } catch (error) {
       console.error("Error adding activity:", error);
     }
@@ -215,6 +241,19 @@ export default function HabitTracker() {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newDisplayTimes));
   };
 
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      form.reset({
+        activity_name: "",
+        activity_type_id: "",
+        start_time: "",
+        end_time: "",
+        notes: "",
+      });
+    }
+  };
+
   return (
     <div className="p-4">
       {isLoading && (
@@ -225,7 +264,7 @@ export default function HabitTracker() {
       <div className="space-y-4 sm:space-y-8">
         <div className="flex flex-row items-start sm:items-center justify-between gap-4">
           <ActivityTypeManager activityTypes={activityTypes} />
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
             <DialogTrigger asChild>
               <Button>Add Activity</Button>
             </DialogTrigger>
@@ -236,104 +275,123 @@ export default function HabitTracker() {
                   Fill in the details to add a new activity to your schedule.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Activity Name</label>
-                  <Input
-                    value={formState.activityName}
-                    onChange={(e) =>
-                      setFormState({
-                        ...formState,
-                        activityName: e.target.value,
-                      })
-                    }
-                    placeholder="Enter activity name"
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(handleAddActivity)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={form.control}
+                    name="activity_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Activity Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Activity Type</label>
-                  <Select
-                    value={formState.selectedType}
-                    onValueChange={(value) =>
-                      setFormState({ ...formState, selectedType: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activityTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Start Time</label>
-                    <Select
-                      value={formState.startTime}
-                      onValueChange={(value) =>
-                        setFormState({ ...formState, startTime: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Start time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">End Time</label>
-                    <Select
-                      value={formState.endTime}
-                      onValueChange={(time) =>
-                        setFormState({ ...formState, endTime: time })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue>{formState.endTime}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Notes</label>
-                  <Textarea
-                    value={formState.notes}
-                    onChange={(e) =>
-                      setFormState({ ...formState, notes: e.target.value })
-                    }
-                    placeholder="Notes (optional)"
+                  <FormField
+                    control={form.control}
+                    name="activity_type_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Activity Type</FormLabel>
+                        <FormControl>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activityTypes.map((type) => (
+                                <SelectItem key={type.id} value={type.id}>
+                                  {type.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-              </div>
-
-              <Button
-                onClick={() => handleAddActivity(formState)}
-                className="mt-4"
-              >
-                Add Activity
-              </Button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="start_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Start Time</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Start time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeSlots.map((time) => (
+                                  <SelectItem key={time} value={time}>
+                                    {time}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="end_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>End Time</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="End time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeSlots.map((time) => (
+                                  <SelectItem key={time} value={time}>
+                                    {time}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit">Add Activity</Button>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
         </div>
@@ -427,37 +485,39 @@ const EditActivityDialog = ({
   timeSlots: string[];
   onDeleteActivity: (id: string) => void;
 }) => {
-  const [editedName, setEditedName] = useState<string>(activity.activity_name);
-  const [editedStartTime, setEditedStartTime] = useState<string>("");
-  const [editedEndTime, setEditedEndTime] = useState<string>("");
-  const [editedNotes, setEditedNotes] = useState<string>(activity.notes || "");
-  const [editedTypeId, setEditedTypeId] = useState<string>(
-    activity.activity_type_id
-  );
+  const form = useForm<ActivityInput>({
+    resolver: zodResolver(activitySchema),
+  });
 
-  // Initialisation avec conversion en format 12h
   useEffect(() => {
     if (activity) {
-      setEditedName(activity.activity_name);
-      setEditedStartTime(formatTimeForDisplay(activity.start_time));
-      setEditedEndTime(formatTimeForDisplay(activity.end_time));
-      setEditedNotes(activity.notes || "");
-      setEditedTypeId(activity.activity_type_id);
+      form.reset({
+        activity_name: activity.activity_name,
+        start_time: formatTimeForDisplay(activity.start_time),
+        end_time: formatTimeForDisplay(activity.end_time),
+        activity_type_id: activity.activity_type_id,
+        notes: activity.notes || "",
+      });
     }
-  }, [activity]);
+  }, [activity, form]);
 
-  const handleSave = async () => {
+  const handleSave = async (data: ActivityInput) => {
     try {
       const baseDate = new Date(activity.date);
-      const startDateTime = convertToUTC(baseDate, editedStartTime);
-      const endDateTime = convertToUTC(baseDate, editedEndTime);
+      const startDateTime = convertToUTC(baseDate, data.start_time);
+      const endDateTime = convertToUTC(baseDate, data.end_time);
+
+      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+        console.error("Invalid date conversion");
+        return;
+      }
 
       await onSave({
-        activity_name: editedName,
+        activity_name: data.activity_name,
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
-        notes: editedNotes,
-        activity_type_id: editedTypeId,
+        notes: data.notes,
+        activity_type_id: data.activity_type_id,
       });
       onClose();
     } catch (error) {
@@ -465,108 +525,131 @@ const EditActivityDialog = ({
     }
   };
 
-  const handleDelete = () => {
-    try {
-      onDeleteActivity(activity.id);
-      onClose();
-    } catch (error) {
-      console.error("Error deleting activity:", error);
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Activity</DialogTitle>
-          <DialogDescription>
-            Modify the activity details and save your changes.
-          </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Activity Type</label>
-              <Select value={editedTypeId} onValueChange={setEditedTypeId}>
-                <SelectTrigger>
-                  <SelectValue>
-                    {activityTypes.find((type) => type.id === editedTypeId)
-                      ?.name || "Select a type"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {activityTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Activity Name</label>
-              <Input
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                placeholder="Activity Name"
-              />
-            </div>
-
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="activity_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Activity Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="activity_type_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Activity Type</FormLabel>
+                  <FormControl>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activityTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Start Time</label>
-                <Select
-                  value={editedStartTime}
-                  onValueChange={setEditedStartTime}
-                >
-                  <SelectTrigger>
-                    <SelectValue>{editedStartTime}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeSlots.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">End Time</label>
-                <Select value={editedEndTime} onValueChange={setEditedEndTime}>
-                  <SelectTrigger>
-                    <SelectValue>{editedEndTime}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeSlots.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Textarea
-                value={editedNotes}
-                onChange={(e) => setEditedNotes(e.target.value)}
-                placeholder="Notes (optional)"
+              <FormField
+                control={form.control}
+                name="start_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Time</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Start time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="end_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Time</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="End time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2">
-            <Button onClick={handleSave}>Save Changes</Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete Activity
-            </Button>
-          </div>
-        </div>
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="mt-4 flex flex-col gap-2">
+              <Button type="submit">Save Changes</Button>
+              <Button
+                variant="destructive"
+                onClick={() => onDeleteActivity(activity.id)}
+              >
+                Delete Activity
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

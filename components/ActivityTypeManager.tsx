@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,12 +8,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ActivityType } from "@/types/activities";
-import { Edit2, Trash2, Plus, Save } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import {
+  activityTypeSchema,
+  type ActivityTypeInput,
+} from "@/lib/validations/activityType";
+import { ActivityType } from "@/types/activities";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { Pencil, Save, X } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface ActivityTypeManagerProps {
   activityTypes: ActivityType[];
@@ -24,32 +38,68 @@ export default function ActivityTypeManager({
   activityTypes,
 }: ActivityTypeManagerProps) {
   const { user } = useAuth();
-  const [newTypeName, setNewTypeName] = useState("");
-  const [newTypeColor, setNewTypeColor] = useState("#000000");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editColor, setEditColor] = useState("");
   const supabase = createClientComponentClient();
   const { toast } = useToast();
 
+  const form = useForm<ActivityTypeInput>({
+    resolver: zodResolver(activityTypeSchema),
+    defaultValues: {
+      name: "",
+      color: "#000000",
+    },
+  });
+
+  const editForm = useForm<ActivityTypeInput>({
+    resolver: zodResolver(activityTypeSchema),
+    defaultValues: {
+      name: "",
+      color: "#000000",
+    },
+  });
+
   const startEditing = (type: ActivityType) => {
     setEditingId(type.id);
-    setEditName(type.name);
-    setEditColor(type.color || "#000000");
+    editForm.reset({
+      name: type.name,
+      color: type.color || "#000000",
+    });
   };
 
   const cancelEditing = () => {
     setEditingId(null);
-    setEditName("");
-    setEditColor("");
+    editForm.reset();
   };
 
-  const updateActivityType = async (id: string) => {
+  const handleAddType = async (data: ActivityTypeInput) => {
     try {
       const { error } = await supabase
         .from("activity_types")
-        .update({ name: editName, color: editColor })
+        .insert([{ name: data.name, color: data.color, user_id: user?.id }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Activity type created successfully",
+      });
+      form.reset();
+      setIsDialogOpen(false);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create activity type",
+      });
+    }
+  };
+
+  const updateActivityType = async (id: string, data: ActivityTypeInput) => {
+    try {
+      const { error } = await supabase
+        .from("activity_types")
+        .update({ name: data.name, color: data.color })
         .eq("id", id);
 
       if (error) throw error;
@@ -65,167 +115,138 @@ export default function ActivityTypeManager({
         title: "Error",
         description: "Failed to update activity type",
       });
-      console.error("Error updating activity type:", err);
     }
   };
 
-  const deleteActivityType = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this type?")) return;
-
-    try {
-      const { error } = await supabase
-        .from("activity_types")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Activity type deleted successfully",
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      form.reset({
+        name: "",
+        color: "#000000",
       });
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete activity type",
-      });
-      console.error("Error deleting activity type:", err);
-    }
-  };
-
-  const addActivityType = async () => {
-    if (!newTypeName) return;
-
-    try {
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("activity_types")
-        .insert([
-          {
-            name: newTypeName,
-            color: newTypeColor,
-            user_id: user.id,
-          },
-        ])
-        .select();
-
-      if (error) throw error;
-      if (data && data[0]) {
-        toast({
-          title: "Success",
-          description: "Activity type added successfully",
-        });
-        setNewTypeName("");
-        setNewTypeColor("#000000");
-        setIsDialogOpen(false);
-      }
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to add activity type",
-      });
-      console.error("Error adding activity type:", err);
+      editForm.reset();
+      setEditingId(null);
     }
   };
 
   return (
-    <>
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline">Manage Activity Types</Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Manage Activity Types</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-3">
-              {activityTypes.map((type) => (
-                <div
-                  key={type.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/10 transition-colors"
-                >
-                  {editingId === type.id ? (
-                    <>
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="flex-1"
+    <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Manage Activity Types</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Manage Activity Types</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(handleAddType)}
+              className="space-y-4"
+            >
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Type Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Color</FormLabel>
+                    <FormControl>
+                      <Input type="color" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit">Add Type</Button>
+            </form>
+          </Form>
+
+          <div className="space-y-3">
+            {activityTypes.map((type) => (
+              <div
+                key={type.id}
+                className="flex items-center gap-3 p-3 rounded-lg border"
+              >
+                {editingId === type.id ? (
+                  <Form {...editForm}>
+                    <form
+                      onSubmit={editForm.handleSubmit((data) =>
+                        updateActivityType(type.id, data)
+                      )}
+                      className="flex-1 flex items-center gap-3"
+                    >
+                      <FormField
+                        control={editForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                      <Input
-                        type="color"
-                        value={editColor}
-                        onChange={(e) => setEditColor(e.target.value)}
-                        className="w-20"
+                      <FormField
+                        control={editForm.control}
+                        name="color"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input type="color" {...field} className="w-20" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => updateActivityType(type.id)}
-                      >
+                      <Button type="submit" size="icon" variant="ghost">
                         <Save className="h-4 w-4" />
                       </Button>
                       <Button
+                        type="button"
                         size="icon"
                         variant="ghost"
                         onClick={cancelEditing}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <X className="h-4 w-4" />
                       </Button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex-1">{type.name}</div>
-                      <div
-                        className="w-6 h-6 rounded-full border"
-                        style={{ backgroundColor: type.color }}
-                      />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => startEditing(type)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => deleteActivityType(type.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Add New Type</h4>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type name"
-                  value={newTypeName}
-                  onChange={(e) => setNewTypeName(e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  type="color"
-                  value={newTypeColor}
-                  onChange={(e) => setNewTypeColor(e.target.value)}
-                  className="w-20"
-                />
-                <Button onClick={addActivityType}>
-                  <Plus className="h-4 w-4" />
-                </Button>
+                    </form>
+                  </Form>
+                ) : (
+                  <>
+                    <div className="flex-1">{type.name}</div>
+                    <div
+                      className="w-6 h-6 rounded-full"
+                      style={{ backgroundColor: type.color || "#000000" }}
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => startEditing(type)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
               </div>
-            </div>
+            ))}
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
