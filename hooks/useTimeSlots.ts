@@ -16,11 +16,12 @@ export const useTimeSlots = () => {
       if (hours === 0) {
         formattedHours = "12";
       } else if (hours > 12) {
-        formattedHours = (hours - 12).toString().padStart(2, "0");
+        formattedHours = (hours - 12).toString();
       } else {
-        formattedHours = hours.toString().padStart(2, "0");
+        formattedHours = hours.toString();
       }
 
+      // Ne pas ajouter de padding aux heures pour maintenir le format cohérent
       const formattedMinutes = minutes.toString().padStart(2, "0");
       slots.push(`${formattedHours}:${formattedMinutes} ${period}`);
       date.setMinutes(date.getMinutes() + 30);
