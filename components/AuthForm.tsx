@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -11,41 +9,57 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { Input } from "@/components/ui/input";
+import {
+  LoginInput,
+  loginSchema,
+  SignUpInput,
+  signUpSchema,
+} from "@/lib/validations/auth";
 import { AuthError } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useState } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 interface AuthFormProps {
   isSignUp?: boolean;
 }
 
 export default function AuthForm({ isSignUp = false }: AuthFormProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const form = useForm<LoginInput | SignUpInput>({
+    resolver: zodResolver(isSignUp ? signUpSchema : loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      ...(isSignUp && { confirmPassword: "" }),
+    },
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const router = useRouter();
   const supabase = createClientComponentClient();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (data: LoginInput | SignUpInput) => {
     setIsLoading(true);
     setError(null);
-
-    if (isSignUp && password !== confirmPassword) {
-      setError("Passwords do not match");
-      setIsLoading(false);
-      return;
-    }
 
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
+          email: data.email,
+          password: data.password,
           options: {
             emailRedirectTo: `${location.origin}/auth/callback`,
           },
@@ -54,8 +68,8 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
         router.push("/login?message=Check your email to confirm your account");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: data.email,
+          password: data.password,
         });
         if (error) throw error;
         router.push("/");
@@ -69,64 +83,80 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
   };
 
   return (
-    <Card className="w-[350px]">
+    <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>{isSignUp ? "Create Account" : "Login"}</CardTitle>
+        <CardTitle>{isSignUp ? "Sign Up" : "Login"}</CardTitle>
         <CardDescription>
           {isSignUp
-            ? "Enter your details to create a new account"
-            : "Welcome back! Enter your credentials to continue"}
+            ? "Create a new account"
+            : "Enter your credentials to login"}
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+      <CardContent>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="email" disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="password" disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          {isSignUp && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Confirm Password</label>
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
+            {isSignUp && (
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          )}
-          {error && <p className="text-sm text-red-500">{error}</p>}
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
-          </Button>
-          <p className="text-sm text-center text-muted-foreground">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-            <Link
-              href={isSignUp ? "/login" : "/signup"}
-              className="text-primary hover:underline"
-            >
-              {isSignUp ? "Sign in" : "Sign up"}
-            </Link>
-          </p>
-        </CardFooter>
-      </form>
+            )}
+            {error && <div className="text-sm text-red-500 mt-2">{error}</div>}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSignUp ? "Sign Up" : "Login"}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+      <CardFooter className="flex justify-center">
+        <Link
+          href={isSignUp ? "/login" : "/signup"}
+          className="text-sm text-muted-foreground hover:underline"
+        >
+          {isSignUp
+            ? "Already have an account? Login"
+            : "Don't have an account? Sign Up"}
+        </Link>
+      </CardFooter>
     </Card>
   );
 }
