@@ -110,6 +110,17 @@ export default function ActivityTypeManager({
 
       if (error) throw error;
 
+      const updatedActivityTypes = activityTypes.map((type) =>
+        type.id === id
+          ? {
+              ...type,
+              name: data.name,
+              color: data.color,
+            }
+          : type
+      );
+      onActivityTypesChange(updatedActivityTypes);
+
       toast({
         title: "Success",
         description: "Activity type updated successfully",
@@ -211,7 +222,7 @@ export default function ActivityTypeManager({
                 key={type.id}
                 className="flex items-center gap-3 p-3 rounded-lg border"
               >
-                {!editingId ? (
+                {editingId !== type.id ? (
                   <>
                     <div className="flex-1">{type.name}</div>
                     <div
