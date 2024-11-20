@@ -175,8 +175,8 @@ export default function HabitTracker() {
   };
 
   const handleDragStart = (timeSlot: string) => {
+    console.log("DragStart:", timeSlot);
     setDragState({
-      ...dragState,
       isDragging: true,
       dragStartSlot: timeSlot,
       dragEndSlot: timeSlot,
@@ -198,17 +198,20 @@ export default function HabitTracker() {
       dragState.dragStartSlot &&
       dragState.dragEndSlot
     ) {
-      const startIdx = dragState.dragStartSlot
-        ? timeSlots.indexOf(dragState.dragStartSlot)
-        : 0;
-      const endIdx = dragState.dragEndSlot
-        ? timeSlots.indexOf(dragState.dragEndSlot)
-        : 0;
+      const startIdx = timeSlots.indexOf(dragState.dragStartSlot);
+      const endIdx = timeSlots.indexOf(dragState.dragEndSlot);
       const finalStartTime = timeSlots[Math.min(startIdx, endIdx)];
-      const finalEndTime = timeSlots[Math.max(startIdx, endIdx)];
+      const finalEndTime = timeSlots[Math.max(startIdx, endIdx + 1)];
 
       form.setValue("start_time", finalStartTime);
       form.setValue("end_time", finalEndTime);
+      setIsDialogOpen(true);
+    } else if (dragState.dragStartSlot) {
+      const startIdx = timeSlots.indexOf(dragState.dragStartSlot);
+      const endIdx = startIdx + 1;
+
+      form.setValue("start_time", timeSlots[startIdx]);
+      form.setValue("end_time", timeSlots[endIdx]);
       setIsDialogOpen(true);
     }
 
@@ -261,13 +264,14 @@ export default function HabitTracker() {
   };
 
   return (
-    <div className="p-4">
+    <div className="flex flex-col h-full">
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center bg-background/80 z-50">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
-      <div className="space-y-4 sm:space-y-8">
+
+      <div className="flex-none px-4 pt-2 pb-2 space-y-2">
         <div className="flex flex-row items-start sm:items-center justify-between gap-4">
           <ActivityTypeManager
             activityTypes={activityTypes}
@@ -437,28 +441,30 @@ export default function HabitTracker() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        <DisplayTimeSelector
+          timeSlots={timeSlots}
+          displayTimes={displayTimes}
+          onTimeChange={handleDisplayTimeChange}
+        />
       </div>
 
-      <DisplayTimeSelector
-        timeSlots={timeSlots}
-        displayTimes={displayTimes}
-        onTimeChange={handleDisplayTimeChange}
-      />
-
-      <ActivityGrid
-        timeSlots={timeSlots}
-        activities={activities}
-        activityTypes={activityTypes}
-        displayTimes={displayTimes}
-        dragState={dragState}
-        onDragStart={handleDragStart}
-        onDragMove={handleDragMove}
-        onDragEnd={handleDragEnd}
-        onEditActivity={setEditingActivity}
-        onDeleteActivity={deleteActivity}
-        calculateActivityPosition={calculateActivityPosition}
-        isActivityVisible={isActivityVisible}
-      />
+      <div className="flex-1 overflow-auto px-4">
+        <ActivityGrid
+          timeSlots={timeSlots}
+          activities={activities}
+          activityTypes={activityTypes}
+          displayTimes={displayTimes}
+          dragState={dragState}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+          onEditActivity={setEditingActivity}
+          onDeleteActivity={deleteActivity}
+          calculateActivityPosition={calculateActivityPosition}
+          isActivityVisible={isActivityVisible}
+        />
+      </div>
 
       {editingActivity && (
         <EditActivityDialog
