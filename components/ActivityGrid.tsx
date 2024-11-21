@@ -99,11 +99,7 @@ export function ActivityGrid({
   const getFilteredTimeSlots = () => {
     const startIndex = timeSlots.indexOf(displayTimes.startTime);
     const endIndex = timeSlots.indexOf(displayTimes.endTime);
-    const slots = timeSlots.slice(startIndex, endIndex + 1);
-    if (displayTimes.endTime === timeSlots[timeSlots.length - 2]) {
-      slots.push("11:59 PM");
-    }
-    return slots;
+    return timeSlots.slice(startIndex, endIndex + 1);
   };
 
   const positionedActivities = calculateOverlappingGroups(activities);
@@ -124,33 +120,37 @@ export function ActivityGrid({
         ))}
       </div>
       <div className="relative pt-3">
-        {getFilteredTimeSlots().map((timeSlot) => {
-          const startIdx = dragState.dragStartSlot
-            ? timeSlots.indexOf(dragState.dragStartSlot)
-            : 0;
-          const endIdx = dragState.dragEndSlot
-            ? timeSlots.indexOf(dragState.dragEndSlot)
-            : 0;
-          const isInDragRange =
-            dragState.isDragging &&
-            dragState.dragStartSlot &&
-            dragState.dragEndSlot &&
-            timeSlots.indexOf(timeSlot) >= Math.min(startIdx, endIdx) &&
-            timeSlots.indexOf(timeSlot) <= Math.max(startIdx, endIdx);
+        {getFilteredTimeSlots()
+          .slice(0, -1)
+          .map((timeSlot, index, array) => {
+            const startIdx = dragState.dragStartSlot
+              ? timeSlots.indexOf(dragState.dragStartSlot)
+              : 0;
+            const endIdx = dragState.dragEndSlot
+              ? timeSlots.indexOf(dragState.dragEndSlot)
+              : 0;
+            const isInDragRange =
+              dragState.isDragging &&
+              dragState.dragStartSlot &&
+              dragState.dragEndSlot &&
+              timeSlots.indexOf(timeSlot) >= Math.min(startIdx, endIdx) &&
+              timeSlots.indexOf(timeSlot) <= Math.max(startIdx, endIdx);
+            const isLastElement = index === array.length - 1;
 
-          return (
-            <div
-              key={timeSlot}
-              className={cn(
-                "h-10 border-t border-gray-200 cursor-pointer transition-colors hover:bg-accent/50",
-                isInDragRange && "bg-accent/50"
-              )}
-              onMouseDown={() => onDragStart(timeSlot)}
-              onMouseEnter={() => onDragMove(timeSlot)}
-              onMouseUp={onDragEnd}
-            />
-          );
-        })}
+            return (
+              <div
+                key={timeSlot}
+                className={cn(
+                  "h-10 border-t border-gray-200 cursor-pointer transition-colors hover:bg-accent/50",
+                  isInDragRange && "bg-accent/50",
+                  isLastElement && "border-b"
+                )}
+                onMouseDown={() => onDragStart(timeSlot)}
+                onMouseEnter={() => onDragMove(timeSlot)}
+                onMouseUp={onDragEnd}
+              />
+            );
+          })}
         {positionedActivities.map((activity) => {
           if (!isActivityVisible(activity)) return null;
 
@@ -173,7 +173,7 @@ export function ActivityGrid({
             );
 
             if (endMinutes === getMinutesFromTime("11:59 PM")) {
-              adjustedEndMinutes = displayEndMinutes + 30;
+              adjustedEndMinutes = displayEndMinutes;
             }
 
             // Calculer la position relative au début de l'affichage
