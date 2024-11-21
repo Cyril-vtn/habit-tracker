@@ -168,6 +168,37 @@ export const useActivityManager = (selectedDate: Date) => {
     }
   };
 
+  const loadActivitiesForDateRange = async (startDate: Date, endDate: Date) => {
+    if (!user || isLoadingRef.current) return;
+    setIsLoading(true);
+    isLoadingRef.current = true;
+
+    try {
+      const formattedStartDate = format(startDate, "yyyy-MM-dd");
+      const formattedEndDate = format(endDate, "yyyy-MM-dd");
+
+      const { data, error } = await supabase
+        .from("activities")
+        .select(`*, activity_type:activity_types(*)`)
+        .gte("date", formattedStartDate)
+        .lte("date", formattedEndDate)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error loading activities:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load activities for date range",
+      });
+    } finally {
+      setIsLoading(false);
+      isLoadingRef.current = false;
+    }
+  };
+
   return {
     activities,
     activityTypes,
@@ -178,5 +209,6 @@ export const useActivityManager = (selectedDate: Date) => {
     updateActivity,
     deleteActivity,
     setActivityTypes,
+    loadActivitiesForDateRange,
   };
 };
