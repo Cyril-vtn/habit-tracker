@@ -32,7 +32,6 @@ interface ActivityGridProps {
   onDragEnd: () => void;
   onEditActivity: (activity: Activity) => void;
   onDeleteActivity: (id: string) => void;
-  calculateActivityPosition: (time: string) => number;
   isActivityVisible: (activity: Activity) => boolean;
 }
 
@@ -52,7 +51,6 @@ export function ActivityGrid({
   onDragEnd,
   onEditActivity,
   onDeleteActivity,
-  calculateActivityPosition,
   isActivityVisible,
 }: ActivityGridProps) {
   const calculateOverlappingGroups = (
@@ -101,24 +99,31 @@ export function ActivityGrid({
   const getFilteredTimeSlots = () => {
     const startIndex = timeSlots.indexOf(displayTimes.startTime);
     const endIndex = timeSlots.indexOf(displayTimes.endTime);
-    return timeSlots.slice(startIndex, endIndex + 1);
+    const slots = timeSlots.slice(startIndex, endIndex + 1);
+    if (displayTimes.endTime === timeSlots[timeSlots.length - 2]) {
+      slots.push("11:59 PM");
+    }
+    return slots;
   };
 
   const positionedActivities = calculateOverlappingGroups(activities);
 
   return (
     <div className="grid grid-cols-[80px_1fr] sm:grid-cols-[100px_1fr] gap-2 sm:gap-4">
-      <div>
+      <div className="pt-3">
         {getFilteredTimeSlots().map((timeSlot) => (
           <div
             key={timeSlot}
-            className="h-10 flex items-center justify-center border text-xs sm:text-sm"
+            className="h-10 flex items-start justify-end pr-2 text-xs sm:text-sm"
+            style={{
+              transform: "translateY(-12px)",
+            }}
           >
             {timeSlot}
           </div>
         ))}
       </div>
-      <div className="relative">
+      <div className="relative pt-3">
         {getFilteredTimeSlots().map((timeSlot) => {
           const startIdx = dragState.dragStartSlot
             ? timeSlots.indexOf(dragState.dragStartSlot)
@@ -137,7 +142,7 @@ export function ActivityGrid({
             <div
               key={timeSlot}
               className={cn(
-                "h-10 border-b border-gray-200 cursor-pointer transition-colors",
+                "h-10 border-t border-gray-200 cursor-pointer transition-colors hover:bg-accent/50",
                 isInDragRange && "bg-accent/50"
               )}
               onMouseDown={() => onDragStart(timeSlot)}
@@ -169,7 +174,6 @@ export function ActivityGrid({
 
             if (endMinutes === getMinutesFromTime("11:59 PM")) {
               adjustedEndMinutes = displayEndMinutes + 30;
-              console.log("adjustedEndMinutes", adjustedEndMinutes);
             }
 
             // Calculer la position relative au début de l'affichage
@@ -177,7 +181,7 @@ export function ActivityGrid({
             const duration = adjustedEndMinutes - adjustedStartMinutes;
 
             return {
-              top: Math.floor(relativeStart / 30) * 40,
+              top: Math.floor(relativeStart / 30) * 40 + 12,
               height: Math.ceil(duration / 30) * 40,
             };
           };
@@ -191,7 +195,7 @@ export function ActivityGrid({
           return (
             <div
               key={activity.id}
-              className="absolute mx-2 rounded-lg p-2 overflow-hidden transition-all cursor-pointer group border border-black/5 hover:border-black/20"
+              className="absolute rounded-lg p-2 overflow-hidden transition-all cursor-pointer group border border-black/5 hover:border-black/20"
               style={{
                 top: `${top}px`,
                 height: `${height}px`,
