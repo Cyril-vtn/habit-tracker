@@ -461,7 +461,6 @@ export default function HabitTracker() {
           onDragEnd={handleDragEnd}
           onEditActivity={setEditingActivity}
           onDeleteActivity={deleteActivity}
-          calculateActivityPosition={calculateActivityPosition}
           isActivityVisible={isActivityVisible}
         />
       </div>
