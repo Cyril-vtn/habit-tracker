@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -33,7 +34,7 @@ import {
   getMinutesFromTime,
 } from "@/utils/timeUtils";
 import { format } from "date-fns";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActivityGrid } from "./ActivityGrid";
 import ActivityTypeManager from "./ActivityTypeManager";
@@ -54,6 +55,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { usePlanManager } from "@/hooks/usePlanManager";
+import { Plan } from "@/types/plans";
+import { PlanGrid } from "./PlanGrid";
+import { planSchema, type PlanInput } from "@/lib/validations/plan";
+import { Checkbox } from "./ui/checkbox";
 
 const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
@@ -69,13 +75,14 @@ export default function HabitTracker() {
     deleteActivity,
     setActivityTypes,
   } = useActivityManager(selectedDate);
-  const [formState, setFormState] = useState({
-    startTime: "",
-    endTime: "",
-    activityName: "",
-    notes: "",
-    selectedType: "",
-  });
+  const {
+    plans,
+    isLoading: isLoadingPlans,
+    addPlan,
+    updatePlan,
+    deletePlan,
+    togglePlan,
+  } = usePlanManager(selectedDate);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [dragState, setDragState] = useState({
@@ -88,6 +95,11 @@ export default function HabitTracker() {
     endTime: "10:00 PM",
   });
   const [windowWidth, setWindowWidth] = useState(0);
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
+  const [activeColumn, setActiveColumn] = useState<"plan" | "activity" | null>(
+    null
+  );
 
   useEffect(() => {
     setWindowWidth(window.innerWidth);
@@ -121,16 +133,6 @@ export default function HabitTracker() {
     };
   }, [dragState.isDragging]);
 
-  const resetForm = () => {
-    setFormState({
-      startTime: "",
-      endTime: "",
-      activityName: "",
-      notes: "",
-      selectedType: "",
-    });
-  };
-
   const form = useForm<ActivityInput>({
     resolver: zodResolver(activitySchema),
     defaultValues: {
@@ -139,6 +141,15 @@ export default function HabitTracker() {
       start_time: "",
       end_time: "",
       notes: "",
+    },
+  });
+
+  const planForm = useForm<PlanInput>({
+    resolver: zodResolver(planSchema),
+    defaultValues: {
+      plan_name: "",
+      start_time: "",
+      end_time: "",
     },
   });
 
@@ -174,8 +185,8 @@ export default function HabitTracker() {
     setSelectedDate(newDate);
   };
 
-  const handleDragStart = (timeSlot: string) => {
-    console.log("DragStart:", timeSlot);
+  const handleDragStart = (timeSlot: string, column: "plan" | "activity") => {
+    setActiveColumn(column);
     setDragState({
       isDragging: true,
       dragStartSlot: timeSlot,
@@ -193,26 +204,20 @@ export default function HabitTracker() {
   };
 
   const handleDragEnd = () => {
-    if (
-      dragState.isDragging &&
-      dragState.dragStartSlot &&
-      dragState.dragEndSlot
-    ) {
-      const startIdx = timeSlots.indexOf(dragState.dragStartSlot);
-      const endIdx = timeSlots.indexOf(dragState.dragEndSlot);
-      const finalStartTime = timeSlots[Math.min(startIdx, endIdx)];
-      const finalEndTime = timeSlots[Math.max(startIdx, endIdx + 1)];
+    if (!dragState.dragStartSlot || !dragState.dragEndSlot || !activeColumn)
+      return;
 
-      form.setValue("start_time", finalStartTime);
-      form.setValue("end_time", finalEndTime);
-      setIsDialogOpen(true);
-    } else if (dragState.dragStartSlot) {
-      const startIdx = timeSlots.indexOf(dragState.dragStartSlot);
-      const endIdx = startIdx + 1;
+    const endSlotIndex = timeSlots.indexOf(dragState.dragEndSlot);
+    const endTime = timeSlots[endSlotIndex + 1] || dragState.dragEndSlot;
 
-      form.setValue("start_time", timeSlots[startIdx]);
-      form.setValue("end_time", timeSlots[endIdx]);
+    if (activeColumn === "plan") {
+      setIsPlanDialogOpen(true);
+      planForm.setValue("start_time", dragState.dragStartSlot);
+      planForm.setValue("end_time", endTime);
+    } else {
       setIsDialogOpen(true);
+      form.setValue("start_time", dragState.dragStartSlot);
+      form.setValue("end_time", endTime);
     }
 
     setDragState({
@@ -220,12 +225,7 @@ export default function HabitTracker() {
       dragStartSlot: null,
       dragEndSlot: null,
     });
-  };
-
-  const calculateActivityPosition = (time: string) => {
-    const startMinutes = getMinutesFromTime(time);
-    const displayStartMinutes = getMinutesFromTime(displayTimes.startTime);
-    return ((startMinutes - displayStartMinutes) / 30) * 40;
+    setActiveColumn(null);
   };
 
   const isActivityVisible = (activity: Activity) => {
@@ -263,6 +263,51 @@ export default function HabitTracker() {
     setActivityTypes(newTypes);
   };
 
+  const isPlanVisible = (plan: Plan) => {
+    const startMinutes = getMinutesFromTime(plan.start_time);
+    const endMinutes = getMinutesFromTime(plan.end_time);
+    const displayStartMinutes = getMinutesFromTime(displayTimes.startTime);
+    const displayEndMinutes = getMinutesFromTime(displayTimes.endTime);
+
+    return startMinutes < displayEndMinutes && endMinutes > displayStartMinutes;
+  };
+
+  const getFilteredTimeSlots = () => {
+    const startIndex = timeSlots.indexOf(displayTimes.startTime);
+    const endIndex = timeSlots.indexOf(displayTimes.endTime);
+    return timeSlots.slice(startIndex, endIndex + 1);
+  };
+
+  const handleAddPlan = async (data: PlanInput) => {
+    try {
+      const startDateTime = convertToUTC(selectedDate, data.start_time);
+      const endDateTime = convertToUTC(selectedDate, data.end_time);
+
+      await addPlan({
+        plan_name: data.plan_name,
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
+        is_finished: data.is_finished,
+      });
+
+      planForm.reset();
+      setIsPlanDialogOpen(false);
+    } catch (error) {
+      console.error("Error adding plan:", error);
+    }
+  };
+
+  const handlePlanDialogChange = (open: boolean) => {
+    setIsPlanDialogOpen(open);
+    if (!open) {
+      planForm.reset({
+        plan_name: "",
+        start_time: "",
+        end_time: "",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {isLoading && (
@@ -272,15 +317,12 @@ export default function HabitTracker() {
       )}
 
       <div className="flex-none px-4 pt-2 pb-2 space-y-2">
-        <div className="flex flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-row sm:items-center gap-4 w-full justify-end">
           <ActivityTypeManager
             activityTypes={activityTypes}
             onActivityTypesChange={handleActivityTypesChange}
           />
           <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-            <DialogTrigger asChild>
-              <Button>Add Activity</Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Add Activity</DialogTitle>
@@ -407,6 +449,93 @@ export default function HabitTracker() {
               </Form>
             </DialogContent>
           </Dialog>
+          <Dialog open={isPlanDialogOpen} onOpenChange={handlePlanDialogChange}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Plan</DialogTitle>
+                <DialogDescription>
+                  Fill in the details to add a new plan to your schedule.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...planForm}>
+                <form
+                  onSubmit={planForm.handleSubmit(handleAddPlan)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={planForm.control}
+                    name="plan_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Plan Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={planForm.control}
+                      name="start_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Start Time</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Start time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeSlots.map((time) => (
+                                  <SelectItem key={time} value={time}>
+                                    {time}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={planForm.control}
+                      name="end_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>End Time</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="End time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeSlots.map((time) => (
+                                  <SelectItem key={time} value={time}>
+                                    {time}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <Button type="submit">Add Plan</Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="flex flex-row items-center gap-4 w-full">
@@ -450,19 +579,75 @@ export default function HabitTracker() {
       </div>
 
       <div className="flex-1 overflow-auto px-4">
-        <ActivityGrid
-          timeSlots={timeSlots}
-          activities={activities}
-          activityTypes={activityTypes}
-          displayTimes={displayTimes}
-          dragState={dragState}
-          onDragStart={handleDragStart}
-          onDragMove={handleDragMove}
-          onDragEnd={handleDragEnd}
-          onEditActivity={setEditingActivity}
-          onDeleteActivity={deleteActivity}
-          isActivityVisible={isActivityVisible}
-        />
+        <div className="grid grid-cols-[100px_1fr_1fr] gap-2">
+          {/* En-têtes des colonnes */}
+          <div className="h-10 sticky top-0 z-10 bg-background"></div>{" "}
+          {/* Espace vide pour aligner avec les autres en-têtes */}
+          <div className="h-10 flex justify-between items-center px-2 sticky top-0 z-10 bg-background">
+            <div className="text-sm font-medium">Plans</div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPlanDialogOpen(true)}
+            >
+              <span className="hidden sm:inline">Add Plan</span>
+              <span className="sm:hidden">+</span>
+            </Button>
+          </div>
+          <div className="h-10 flex justify-between items-center px-2 sticky top-0 z-10 bg-background">
+            <div className="text-sm font-medium">Activities</div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDialogOpen(true)}
+            >
+              <span className="hidden sm:inline">Add Activity</span>
+              <span className="sm:hidden">+</span>
+            </Button>
+          </div>
+          {/* Grille principale */}
+          <div className="pt-3">
+            {getFilteredTimeSlots().map((timeSlot) => (
+              <div
+                key={timeSlot}
+                className="h-10 flex items-start justify-end pr-2 text-xs sm:text-sm"
+                style={{ transform: "translateY(-12px)" }}
+              >
+                {timeSlot}
+              </div>
+            ))}
+          </div>
+          <div className="relative pt-3 border-r">
+            <PlanGrid
+              timeSlots={timeSlots}
+              plans={plans}
+              displayTimes={displayTimes}
+              dragState={dragState}
+              onDragStart={(timeSlot) => handleDragStart(timeSlot, "plan")}
+              onDragMove={handleDragMove}
+              onDragEnd={handleDragEnd}
+              onEditPlan={setEditingPlan}
+              onDeletePlan={deletePlan}
+              isPlanVisible={isPlanVisible}
+              onTogglePlan={togglePlan}
+            />
+          </div>
+          <div className="relative pt-3">
+            <ActivityGrid
+              timeSlots={timeSlots}
+              activities={activities}
+              activityTypes={activityTypes}
+              displayTimes={displayTimes}
+              dragState={dragState}
+              onDragStart={(timeSlot) => handleDragStart(timeSlot, "activity")}
+              onDragMove={handleDragMove}
+              onDragEnd={handleDragEnd}
+              onEditActivity={setEditingActivity}
+              onDeleteActivity={deleteActivity}
+              isActivityVisible={isActivityVisible}
+            />
+          </div>
+        </div>
       </div>
 
       {editingActivity && (
@@ -476,6 +661,19 @@ export default function HabitTracker() {
           activityTypes={activityTypes}
           timeSlots={timeSlots}
           onDeleteActivity={deleteActivity}
+        />
+      )}
+
+      {editingPlan && (
+        <EditPlanDialog
+          plan={editingPlan}
+          isOpen={!!editingPlan}
+          onClose={() => setEditingPlan(null)}
+          onSave={(updatedFields: PlanInput) =>
+            updatePlan(editingPlan.id, updatedFields)
+          }
+          timeSlots={timeSlots}
+          onDeletePlan={deletePlan}
         />
       )}
     </div>
@@ -698,6 +896,185 @@ const EditActivityDialog = ({
                 onClick={() => onDeleteActivity(activity.id)}
               >
                 Delete Activity
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const EditPlanDialog = ({
+  plan,
+  isOpen,
+  onClose,
+  onSave,
+  timeSlots,
+  onDeletePlan,
+}: {
+  plan: Plan;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (updatedFields: PlanInput) => Promise<void>;
+  timeSlots: string[];
+  onDeletePlan: (id: string) => void;
+}) => {
+  const form = useForm<PlanInput>({
+    resolver: zodResolver(planSchema),
+    defaultValues: {
+      plan_name: plan.plan_name,
+      start_time: formatTimeForDisplay(plan.start_time),
+      end_time: formatTimeForDisplay(plan.end_time),
+      is_finished: plan.is_finished,
+    },
+  });
+
+  const formValues = form.watch();
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    const originalValues = {
+      plan_name: plan.plan_name,
+      start_time: formatTimeForDisplay(plan.start_time),
+      end_time: formatTimeForDisplay(plan.end_time),
+      is_finished: plan.is_finished,
+    };
+
+    const hasFormChanges = Object.keys(originalValues).some(
+      (key) =>
+        formValues[key as keyof PlanInput] !==
+        originalValues[key as keyof typeof originalValues]
+    );
+
+    setHasChanges(hasFormChanges);
+  }, [formValues, plan]);
+
+  const handleSave = async (data: PlanInput) => {
+    try {
+      const baseDate = new Date(plan.date);
+      const startDateTime = convertToUTC(baseDate, data.start_time);
+      const endDateTime = convertToUTC(baseDate, data.end_time);
+
+      await onSave({
+        plan_name: data.plan_name,
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
+        is_finished: data.is_finished,
+      });
+      onClose();
+    } catch (error) {
+      console.error("Error saving plan:", error);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Plan</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="plan_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plan Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="start_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Time</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Start time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="end_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Time</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="End time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="is_finished"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="font-medium">
+                      Mark as completed
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            <div className="space-y-2">
+              <Button type="submit" className="w-full" disabled={!hasChanges}>
+                Save Changes
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full"
+                onClick={() => onDeletePlan(plan.id)}
+              >
+                Delete Plan
               </Button>
             </div>
           </form>

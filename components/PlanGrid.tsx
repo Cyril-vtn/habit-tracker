@@ -1,29 +1,25 @@
-import { Activity, ActivityType } from "@/types/activities";
-import {
-  getMinutesFromTime,
-  getBgColor,
-  formatTimeForDisplay,
-} from "@/utils/timeUtils";
+import { Plan } from "@/types/plans";
+import { getMinutesFromTime, formatTimeForDisplay } from "@/utils/timeUtils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit2, Trash2 } from "lucide-react";
+import { MoreVertical, Edit2, Trash2, CheckIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useRef, useEffect, useState } from "react";
+import { PlanInput } from "@/lib/validations/plan";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useRef, useEffect, useState } from "react";
 
-interface ActivityGridProps {
+interface PlanGridProps {
   timeSlots: string[];
-  activities: Activity[];
-  activityTypes: ActivityType[];
+  plans: Plan[];
   displayTimes: {
     startTime: string;
     endTime: string;
@@ -36,51 +32,49 @@ interface ActivityGridProps {
   onDragStart: (timeSlot: string) => void;
   onDragMove: (timeSlot: string) => void;
   onDragEnd: () => void;
-  onEditActivity: (activity: Activity) => void;
-  onDeleteActivity: (id: string) => void;
-  isActivityVisible: (activity: Activity) => boolean;
+  onEditPlan: (plan: Plan) => void;
+  onDeletePlan: (id: string) => void;
+  onTogglePlan: (plan: Plan) => Promise<void>;
+  isPlanVisible: (plan: Plan) => boolean;
 }
 
-interface PositionedActivity extends Activity {
+interface PositionedPlan extends Plan {
   column: number;
   totalColumns: number;
 }
 
-export function ActivityGrid({
+export function PlanGrid({
   timeSlots,
-  activities,
-  activityTypes,
+  plans,
   displayTimes,
   dragState,
   onDragStart,
   onDragMove,
   onDragEnd,
-  onEditActivity,
-  onDeleteActivity,
-  isActivityVisible,
-}: ActivityGridProps) {
-  const calculateOverlappingGroups = (
-    activities: Activity[]
-  ): PositionedActivity[] => {
-    const sortedActivities = [...activities].sort((a, b) => {
+  onEditPlan,
+  onDeletePlan,
+  onTogglePlan,
+  isPlanVisible,
+}: PlanGridProps) {
+  const calculateOverlappingGroups = (plans: Plan[]): PositionedPlan[] => {
+    const sortedPlans = [...plans].sort((a, b) => {
       const startA = getMinutesFromTime(a.start_time);
       const startB = getMinutesFromTime(b.start_time);
       return startA - startB;
     });
 
-    const positionedActivities: PositionedActivity[] = [];
-    const groups: PositionedActivity[][] = [];
+    const positionedPlans: PositionedPlan[] = [];
+    const groups: PositionedPlan[][] = [];
 
-    sortedActivities.forEach((activity) => {
-      const activityStart = getMinutesFromTime(activity.start_time);
-      const activityEnd = getMinutesFromTime(activity.end_time);
+    sortedPlans.forEach((plan) => {
+      const planStart = getMinutesFromTime(plan.start_time);
+      const planEnd = getMinutesFromTime(plan.end_time);
 
-      // Trouver le groupe qui chevauche cette activité
       let foundGroup = groups.find((group) =>
-        group.some((groupActivity) => {
-          const groupStart = getMinutesFromTime(groupActivity.start_time);
-          const groupEnd = getMinutesFromTime(groupActivity.end_time);
-          return activityStart < groupEnd && activityEnd > groupStart;
+        group.some((groupPlan) => {
+          const groupStart = getMinutesFromTime(groupPlan.start_time);
+          const groupEnd = getMinutesFromTime(groupPlan.end_time);
+          return planStart < groupEnd && planEnd > groupStart;
         })
       );
 
@@ -89,17 +83,17 @@ export function ActivityGrid({
         groups.push(foundGroup);
       }
 
-      const positionedActivity = {
-        ...activity,
+      const positionedPlan = {
+        ...plan,
         column: foundGroup.length,
         totalColumns: 1,
       };
 
-      foundGroup.push(positionedActivity);
-      positionedActivities.push(positionedActivity);
+      foundGroup.push(positionedPlan);
+      positionedPlans.push(positionedPlan);
     });
 
-    return positionedActivities;
+    return positionedPlans;
   };
 
   const getFilteredTimeSlots = () => {
@@ -108,7 +102,11 @@ export function ActivityGrid({
     return timeSlots.slice(startIndex, endIndex + 1);
   };
 
-  const positionedActivities = calculateOverlappingGroups(activities);
+  const positionedPlans = calculateOverlappingGroups(plans);
+
+  const handleTogglePlan = async (plan: Plan) => {
+    await onTogglePlan(plan);
+  };
 
   return (
     <div className="relative">
@@ -143,12 +141,12 @@ export function ActivityGrid({
             />
           );
         })}
-      {positionedActivities.map((activity) => {
-        if (!isActivityVisible(activity)) return null;
+      {positionedPlans.map((plan) => {
+        if (!isPlanVisible(plan)) return null;
 
-        const calculateAdjustedPosition = (activity: PositionedActivity) => {
-          const startMinutes = getMinutesFromTime(activity.start_time);
-          const endMinutes = getMinutesFromTime(activity.end_time);
+        const calculatePosition = () => {
+          const startMinutes = getMinutesFromTime(plan.start_time);
+          const endMinutes = getMinutesFromTime(plan.end_time);
           const displayStartMinutes = getMinutesFromTime(
             displayTimes.startTime
           );
@@ -158,14 +156,10 @@ export function ActivityGrid({
             startMinutes,
             displayStartMinutes
           );
-          let adjustedEndMinutes = Math.min(
+          const adjustedEndMinutes = Math.min(
             endMinutes < startMinutes ? endMinutes + 24 * 60 : endMinutes,
             displayEndMinutes
           );
-
-          if (endMinutes === getMinutesFromTime("11:59 PM")) {
-            adjustedEndMinutes = displayEndMinutes;
-          }
 
           const relativeStart = adjustedStartMinutes - displayStartMinutes;
           const duration = adjustedEndMinutes - adjustedStartMinutes;
@@ -176,36 +170,30 @@ export function ActivityGrid({
           };
         };
 
-        const { top, height } = calculateAdjustedPosition(activity);
-
-        const activityType = activityTypes.find(
-          (type) => type.id === activity.activity_type_id
-        );
+        const { top, height } = calculatePosition();
 
         return (
           <div
-            key={activity.id}
-            className="absolute rounded-lg p-2 overflow-hidden transition-all cursor-pointer group border border-black/5 hover:border-black/20"
+            key={plan.id}
+            className={cn(
+              "absolute rounded-lg p-2 overflow-hidden transition-all cursor-pointer group border border-black/5 hover:border-black/20 bg-gray-50",
+              plan.is_finished && "bg-green-100"
+            )}
             style={{
               top: `${top}px`,
               height: `${height}px`,
-              backgroundColor: getBgColor(activityType?.color),
               right: "0",
-              left: `${activity.column * 80}px`,
-              width: `calc(100% - ${activity.column * 80}px)`,
-              zIndex: activity.column,
+              left: `${plan.column * 80}px`,
+              width: `calc(100% - ${plan.column * 80}px)`,
+              zIndex: plan.column,
             }}
-            onClick={() => onEditActivity(activity)}
+            onClick={() => onEditPlan(plan)}
           >
-            <ActivityContent
-              activity={{
-                ...activity,
-                start_time: formatTimeForDisplay(activity.start_time),
-                end_time: formatTimeForDisplay(activity.end_time),
-              }}
-              activityType={activityType}
-              onEdit={onEditActivity}
-              onDelete={onDeleteActivity}
+            <PlanContent
+              plan={plan}
+              onEdit={onEditPlan}
+              onDelete={onDeletePlan}
+              onTogglePlan={handleTogglePlan}
             />
           </div>
         );
@@ -214,16 +202,16 @@ export function ActivityGrid({
   );
 }
 
-function ActivityContent({
-  activity,
-  activityType,
+function PlanContent({
+  plan,
   onEdit,
   onDelete,
+  onTogglePlan,
 }: {
-  activity: Activity;
-  activityType?: ActivityType;
-  onEdit: (activity: Activity) => void;
+  plan: Plan;
+  onEdit: (plan: Plan) => void;
   onDelete: (id: string) => void;
+  onTogglePlan: (plan: Plan) => void;
 }) {
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTextTruncated, setIsTextTruncated] = useState(false);
@@ -233,28 +221,46 @@ function ActivityContent({
     if (element) {
       setIsTextTruncated(element.scrollWidth > element.clientWidth);
     }
-  }, [activity.activity_name]);
+  }, [plan.plan_name]);
 
   return (
-    <>
-      <div className="font-medium flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          {activityType && (
-            <div
-              className="w-3 h-3 rounded-full border border-black/10 flex-shrink-0"
-              style={{ backgroundColor: activityType.color }}
-              title={activityType.name}
+    <div className="font-medium flex flex-col min-h-full">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 min-w-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-6 w-6 flex-shrink-0 hover:bg-gray-200 rounded-full",
+              plan.is_finished && "hover:bg-green-200"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePlan(plan);
+            }}
+          >
+            <CheckIcon
+              className={cn(
+                "h-4 w-4",
+                plan.is_finished ? "text-green-500" : "text-muted-foreground"
+              )}
             />
-          )}
+          </Button>
           <Tooltip delayDuration={300}>
             <TooltipTrigger asChild>
-              <span ref={textRef} className="relative truncate">
-                {activity.activity_name}
+              <span
+                ref={textRef}
+                className={cn(
+                  "relative truncate",
+                  plan.is_finished && "line-through"
+                )}
+              >
+                {plan.plan_name}
               </span>
             </TooltipTrigger>
             {isTextTruncated && (
               <TooltipContent side="top" align="start">
-                {activity.activity_name}
+                {plan.plan_name}
               </TooltipContent>
             )}
           </Tooltip>
@@ -273,7 +279,7 @@ function ActivityContent({
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                onEdit(activity);
+                onEdit(plan);
               }}
             >
               <Edit2 className="h-4 w-4 mr-2" />
@@ -283,7 +289,7 @@ function ActivityContent({
               className="text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(activity.id);
+                onDelete(plan.id);
               }}
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -292,19 +298,6 @@ function ActivityContent({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="text-sm opacity-75 flex items-center gap-2">
-        <span>
-          {activity.start_time} - {activity.end_time}
-        </span>
-        {activityType && (
-          <span className="text-xs bg-black/10 px-2 py-0.5 rounded-full">
-            {activityType.name}
-          </span>
-        )}
-      </div>
-      {activity.notes && (
-        <div className="text-sm mt-1 opacity-75">{activity.notes}</div>
-      )}
-    </>
+    </div>
   );
 }
