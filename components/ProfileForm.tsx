@@ -10,20 +10,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function ProfileForm() {
   const { user } = useAuth();
+  const { t, language, setLanguage } = useLanguage();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
   const supabase = createClientComponentClient();
   const { toast } = useToast();
 
@@ -32,8 +37,8 @@ export function ProfileForm() {
     if (password !== confirmPassword) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Passwords do not match",
+        title: t("common.error"),
+        description: t("profile.passwordError"),
       });
       return;
     }
@@ -46,8 +51,8 @@ export function ProfileForm() {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Password updated successfully",
+        title: t("common.success"),
+        description: t("profile.passwordSuccess"),
       });
 
       setPassword("");
@@ -55,7 +60,7 @@ export function ProfileForm() {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t("common.error"),
         description: error.message,
       });
     } finally {
@@ -67,13 +72,17 @@ export function ProfileForm() {
     <div className="max-w-md mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Current email: {user?.email}</CardDescription>
+          <CardTitle>{t("profile.title")}</CardTitle>
+          <CardDescription>
+            {t("profile.currentEmail")}: {user?.email}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <form onSubmit={handleUpdatePassword} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">New password</label>
+              <label className="text-sm font-medium">
+                {t("profile.newPassword")}
+              </label>
               <Input
                 type="password"
                 value={password}
@@ -82,7 +91,9 @@ export function ProfileForm() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Confirm password</label>
+              <label className="text-sm font-medium">
+                {t("profile.confirmPassword")}
+              </label>
               <Input
                 type="password"
                 value={confirmPassword}
@@ -94,10 +105,28 @@ export function ProfileForm() {
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Update password"
+                t("profile.updatePassword")
               )}
             </Button>
           </form>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              {t("profile.language")}
+            </label>
+            <Select
+              value={language}
+              onValueChange={(value: "en" | "zh") => setLanguage(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("profile.selectLanguage")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="zh">中文</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
     </div>

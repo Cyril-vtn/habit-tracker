@@ -12,22 +12,23 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Home, PieChart, LogOut, User } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "./ui/button";
+import { useLanguage } from "@/hooks/useLanguage";
 
-const navItems = [
+const getNavItems = (t: (key: string) => string) => [
   {
     href: "/",
     icon: Home,
-    label: "Home",
+    label: t("sidebar.home"),
   },
   {
     href: "/stats",
     icon: PieChart,
-    label: "Chart",
+    label: t("sidebar.stats"),
   },
   {
     href: "/profile",
     icon: User,
-    label: "Profile",
+    label: t("sidebar.profile"),
   },
 ];
 
@@ -35,6 +36,8 @@ export function AppSidebar() {
   const pathname = usePathname();
   const supabase = createClientComponentClient();
   const router = useRouter();
+  const { t } = useLanguage();
+  const navItems = getNavItems(t);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -44,7 +47,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <h1 className="text-xl font-bold">Habit Tracker</h1>
+        <h1 className="text-xl font-bold">{t("sidebar.title")}</h1>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup className="flex flex-col gap-2">
@@ -64,7 +67,7 @@ export function AppSidebar() {
       <SidebarFooter>
         <Button variant="destructive" onClick={handleSignOut}>
           <LogOut className="h-4 w-4" />
-          <span>Sign Out</span>
+          <span>{t("sidebar.signOut")}</span>
         </Button>
       </SidebarFooter>
     </Sidebar>

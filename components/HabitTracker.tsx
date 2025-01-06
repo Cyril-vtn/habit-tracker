@@ -60,12 +60,14 @@ import { Plan } from "@/types/plans";
 import { PlanGrid } from "./PlanGrid";
 import { planSchema, type PlanInput } from "@/lib/validations/plan";
 import { Checkbox } from "./ui/checkbox";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
 export default function HabitTracker() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const timeSlots = useTimeSlots();
+  const { t } = useLanguage();
   const {
     activities,
     activityTypes,
@@ -325,9 +327,9 @@ export default function HabitTracker() {
           <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Add Activity</DialogTitle>
+                <DialogTitle>{t("activities.title")}</DialogTitle>
                 <DialogDescription>
-                  Fill in the details to add a new activity to your schedule.
+                  {t("activities.addActivity")}
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -340,9 +342,12 @@ export default function HabitTracker() {
                     name="activity_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Activity Name</FormLabel>
+                        <FormLabel>{t("activities.activityName")}</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input
+                            {...field}
+                            placeholder={t("activities.activityName")}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -353,14 +358,16 @@ export default function HabitTracker() {
                     name="activity_type_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Activity Type</FormLabel>
+                        <FormLabel>{t("activities.activityType")}</FormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
                             onValueChange={field.onChange}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a type" />
+                              <SelectValue
+                                placeholder={t("common.selectType")}
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               {activityTypes.map((type) => (
@@ -381,14 +388,16 @@ export default function HabitTracker() {
                       name="start_time"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Start Time</FormLabel>
+                          <FormLabel>{t("common.startTime")}</FormLabel>
                           <FormControl>
                             <Select
                               value={field.value}
                               onValueChange={field.onChange}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Start time" />
+                                <SelectValue
+                                  placeholder={t("common.selectStartTime")}
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 {timeSlots.map((time) => (
@@ -408,14 +417,16 @@ export default function HabitTracker() {
                       name="end_time"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>End Time</FormLabel>
+                          <FormLabel>{t("common.endTime")}</FormLabel>
                           <FormControl>
                             <Select
                               value={field.value}
                               onValueChange={field.onChange}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="End time" />
+                                <SelectValue
+                                  placeholder={t("common.selectEndTime")}
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 {timeSlots.map((time) => (
@@ -436,15 +447,18 @@ export default function HabitTracker() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Notes</FormLabel>
+                        <FormLabel>{t("common.notes")}</FormLabel>
                         <FormControl>
-                          <Textarea {...field} />
+                          <Textarea
+                            {...field}
+                            placeholder={t("common.notes")}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit">Add Activity</Button>
+                  <Button type="submit">{t("common.addActivity")}</Button>
                 </form>
               </Form>
             </DialogContent>
@@ -452,9 +466,9 @@ export default function HabitTracker() {
           <Dialog open={isPlanDialogOpen} onOpenChange={handlePlanDialogChange}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Add Plan</DialogTitle>
+                <DialogTitle>{t("common.addPlan")}</DialogTitle>
                 <DialogDescription>
-                  Fill in the details to add a new plan to your schedule.
+                  {t("common.addPlanDescription")}
                 </DialogDescription>
               </DialogHeader>
               <Form {...planForm}>
@@ -467,9 +481,9 @@ export default function HabitTracker() {
                     name="plan_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Plan Name</FormLabel>
+                        <FormLabel>{t("plans.planName")}</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} placeholder={t("plans.planName")} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -481,14 +495,16 @@ export default function HabitTracker() {
                       name="start_time"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Start Time</FormLabel>
+                          <FormLabel>{t("common.startTime")}</FormLabel>
                           <FormControl>
                             <Select
                               value={field.value}
                               onValueChange={field.onChange}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Start time" />
+                                <SelectValue
+                                  placeholder={t("common.selectStartTime")}
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 {timeSlots.map((time) => (
@@ -508,14 +524,16 @@ export default function HabitTracker() {
                       name="end_time"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>End Time</FormLabel>
+                          <FormLabel>{t("common.endTime")}</FormLabel>
                           <FormControl>
                             <Select
                               value={field.value}
                               onValueChange={field.onChange}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="End time" />
+                                <SelectValue
+                                  placeholder={t("common.selectEndTime")}
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 {timeSlots.map((time) => (
@@ -531,7 +549,7 @@ export default function HabitTracker() {
                       )}
                     />
                   </div>
-                  <Button type="submit">Add Plan</Button>
+                  <Button type="submit">{t("common.addPlan")}</Button>
                 </form>
               </Form>
             </DialogContent>
@@ -551,8 +569,8 @@ export default function HabitTracker() {
                   className="w-full justify-center text-base sm:text-xl font-semibold"
                 >
                   {windowWidth < 640
-                    ? format(selectedDate, "dd/MM/yyyy")
-                    : format(selectedDate, "EEEE, MMMM do, yyyy")}
+                    ? format(selectedDate, t("calendar.dateFormat.short"))
+                    : format(selectedDate, t("calendar.dateFormat.long"))}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="center">
@@ -580,32 +598,31 @@ export default function HabitTracker() {
 
       <div className="flex-1 overflow-auto px-4">
         <div className="grid grid-cols-[100px_1fr_1fr] gap-2">
-          {/* En-têtes des colonnes */}
-          <div className="h-10 sticky top-0 z-10 bg-background"></div>{" "}
-          {/* Espace vide pour aligner avec les autres en-têtes */}
+          <div className="h-10 sticky top-0 z-10 bg-background"></div>
           <div className="h-10 flex justify-between items-center px-2 sticky top-0 z-10 bg-background">
-            <div className="text-sm font-medium">Plans</div>
+            <div className="text-sm font-medium">{t("common.plans")}</div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsPlanDialogOpen(true)}
             >
-              <span className="hidden sm:inline">Add Plan</span>
+              <span className="hidden sm:inline">{t("common.addPlan")}</span>
               <span className="sm:hidden">+</span>
             </Button>
           </div>
           <div className="h-10 flex justify-between items-center px-2 sticky top-0 z-10 bg-background">
-            <div className="text-sm font-medium">Activities</div>
+            <div className="text-sm font-medium">{t("common.activities")}</div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsDialogOpen(true)}
             >
-              <span className="hidden sm:inline">Add Activity</span>
+              <span className="hidden sm:inline">
+                {t("common.addActivity")}
+              </span>
               <span className="sm:hidden">+</span>
             </Button>
           </div>
-          {/* Grille principale */}
           <div className="pt-3">
             {getFilteredTimeSlots().map((timeSlot) => (
               <div
@@ -697,6 +714,7 @@ const EditActivityDialog = ({
   timeSlots: string[];
   onDeleteActivity: (id: string) => void;
 }) => {
+  const { t } = useLanguage();
   const form = useForm<ActivityInput>({
     resolver: zodResolver(activitySchema),
   });
@@ -762,7 +780,7 @@ const EditActivityDialog = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Activity</DialogTitle>
+          <DialogTitle>{t("activities.title")}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
@@ -771,9 +789,12 @@ const EditActivityDialog = ({
               name="activity_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Activity Name</FormLabel>
+                  <FormLabel>{t("activities.activityName")}</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input
+                      {...field}
+                      placeholder={t("activities.activityName")}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -784,11 +805,11 @@ const EditActivityDialog = ({
               name="activity_type_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Activity Type</FormLabel>
+                  <FormLabel>{t("activities.activityType")}</FormLabel>
                   <FormControl>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a type" />
+                        <SelectValue placeholder={t("activities.selectType")} />
                       </SelectTrigger>
                       <SelectContent>
                         {activityTypes.map((type) => (
@@ -809,14 +830,16 @@ const EditActivityDialog = ({
                 name="start_time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Time</FormLabel>
+                    <FormLabel>{t("common.startTime")}</FormLabel>
                     <FormControl>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Start time" />
+                          <SelectValue
+                            placeholder={t("common.selectStartTime")}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {timeSlots.map((time) => (
@@ -836,14 +859,16 @@ const EditActivityDialog = ({
                 name="end_time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>End Time</FormLabel>
+                    <FormLabel>{t("common.endTime")}</FormLabel>
                     <FormControl>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="End time" />
+                          <SelectValue
+                            placeholder={t("common.selectEndTime")}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {timeSlots.map((time) => (
@@ -864,9 +889,9 @@ const EditActivityDialog = ({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>{t("common.notes")}</FormLabel>
                   <FormControl>
-                    <Textarea {...field} />
+                    <Textarea {...field} placeholder={t("common.notes")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -881,13 +906,13 @@ const EditActivityDialog = ({
                       disabled={!hasChanges}
                       className="w-full"
                     >
-                      Save Changes
+                      {t("common.save")}
                     </Button>
                   </div>
                 </TooltipTrigger>
                 {!hasChanges && (
                   <TooltipContent>
-                    <p>No change has been made to this activity</p>
+                    <p>{t("common.noChanges")}</p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -895,7 +920,7 @@ const EditActivityDialog = ({
                 variant="destructive"
                 onClick={() => onDeleteActivity(activity.id)}
               >
-                Delete Activity
+                {t("activities.deleteActivity")}
               </Button>
             </div>
           </form>
@@ -920,6 +945,7 @@ const EditPlanDialog = ({
   timeSlots: string[];
   onDeletePlan: (id: string) => void;
 }) => {
+  const { t } = useLanguage();
   const form = useForm<PlanInput>({
     resolver: zodResolver(planSchema),
     defaultValues: {
@@ -972,7 +998,7 @@ const EditPlanDialog = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Plan</DialogTitle>
+          <DialogTitle>{t("plans.title")}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
@@ -981,9 +1007,9 @@ const EditPlanDialog = ({
               name="plan_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Plan Name</FormLabel>
+                  <FormLabel>{t("plans.planName")}</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} placeholder={t("plans.planName")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -995,14 +1021,16 @@ const EditPlanDialog = ({
                 name="start_time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Time</FormLabel>
+                    <FormLabel>{t("common.startTime")}</FormLabel>
                     <FormControl>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Start time" />
+                          <SelectValue
+                            placeholder={t("common.selectStartTime")}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {timeSlots.map((time) => (
@@ -1022,14 +1050,16 @@ const EditPlanDialog = ({
                 name="end_time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>End Time</FormLabel>
+                    <FormLabel>{t("common.endTime")}</FormLabel>
                     <FormControl>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="End time" />
+                          <SelectValue
+                            placeholder={t("common.selectEndTime")}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {timeSlots.map((time) => (
@@ -1058,7 +1088,7 @@ const EditPlanDialog = ({
                       />
                     </FormControl>
                     <FormLabel className="font-medium">
-                      Mark as completed
+                      {t("plans.markAsCompleted")}
                     </FormLabel>
                   </div>
                 </FormItem>
@@ -1066,7 +1096,7 @@ const EditPlanDialog = ({
             />
             <div className="space-y-2">
               <Button type="submit" className="w-full" disabled={!hasChanges}>
-                Save Changes
+                {t("plans.saveChanges")}
               </Button>
               <Button
                 type="button"
@@ -1074,7 +1104,7 @@ const EditPlanDialog = ({
                 className="w-full"
                 onClick={() => onDeletePlan(plan.id)}
               >
-                Delete Plan
+                {t("plans.deletePlan")}
               </Button>
             </div>
           </form>

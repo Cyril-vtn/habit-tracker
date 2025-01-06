@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 import {
@@ -21,8 +21,8 @@ import {
   Tooltip,
 } from "recharts";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface ActivityStat {
   type: string;
@@ -51,6 +51,7 @@ const calculateDuration = (
 
 export default function ActivityStats() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const today = new Date();
   const [date, setDate] = useState<DateRange | undefined>({
     from: today,
@@ -141,7 +142,7 @@ export default function ActivityStats() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
-      <div className=" flex flex-col px-4 mt-4">
+      <div className="flex flex-col px-4 mt-4">
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -155,14 +156,14 @@ export default function ActivityStats() {
               {date?.from ? (
                 date.to ? (
                   <>
-                    {format(date.from, "LLL dd, y")} -{" "}
-                    {format(date.to, "LLL dd, y")}
+                    {format(date.from, t("stats.dateFormat"))} -{" "}
+                    {format(date.to, t("stats.dateFormat"))}
                   </>
                 ) : (
-                  format(date.from, "LLL dd, y")
+                  format(date.from, t("stats.dateFormat"))
                 )
               ) : (
-                <span>Pick a date range</span>
+                <span>{t("stats.pickDateRange")}</span>
               )}
             </Button>
           </PopoverTrigger>
@@ -182,7 +183,7 @@ export default function ActivityStats() {
       {stats.length > 0 ? (
         <div className="px-6 space-y-2">
           <h2 className="text-lg sm:text-xl font-bold mb-4">
-            Activity Distribution
+            {t("stats.title")}
           </h2>
           <div className="h-[300px] sm:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -202,8 +203,8 @@ export default function ActivityStats() {
                 </Pie>
                 <Tooltip
                   formatter={(value: number) => [
-                    `${value.toFixed(2)} hours`,
-                    "Duration",
+                    `${value.toFixed(2)} ${t("stats.hours")}`,
+                    t("stats.duration"),
                   ]}
                 />
                 <Legend />
@@ -213,7 +214,7 @@ export default function ActivityStats() {
         </div>
       ) : (
         <div className="px-6 text-center text-sm text-muted-foreground mt-4">
-          No activity data found
+          {t("stats.noData")}
         </div>
       )}
     </div>

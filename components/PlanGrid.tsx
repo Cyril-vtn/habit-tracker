@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRef, useEffect, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface PlanGridProps {
   timeSlots: string[];
@@ -213,6 +214,7 @@ function PlanContent({
   onDelete: (id: string) => void;
   onTogglePlan: (plan: Plan) => void;
 }) {
+  const { t } = useLanguage();
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTextTruncated, setIsTextTruncated] = useState(false);
 
@@ -283,7 +285,7 @@ function PlanContent({
               }}
             >
               <Edit2 className="h-4 w-4 mr-2" />
-              Edit
+              {t("common.edit")}
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive"
@@ -293,7 +295,7 @@ function PlanContent({
               }}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete
+              {t("common.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

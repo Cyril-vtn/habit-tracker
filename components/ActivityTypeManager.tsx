@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   activityTypeSchema,
   type ActivityTypeInput,
@@ -40,6 +41,7 @@ export default function ActivityTypeManager({
   onActivityTypesChange,
 }: ActivityTypeManagerProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const supabase = createClientComponentClient();
@@ -87,16 +89,16 @@ export default function ActivityTypeManager({
       onActivityTypesChange([...activityTypes, newType]);
 
       toast({
-        title: "Success",
-        description: "Activity type created successfully",
+        title: t("common.success"),
+        description: t("activityTypes.createSuccess"),
       });
       form.reset();
       setIsDialogOpen(false);
     } catch (err) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to create activity type",
+        title: t("common.error"),
+        description: t("activityTypes.createError"),
       });
     }
   };
@@ -122,15 +124,15 @@ export default function ActivityTypeManager({
       onActivityTypesChange(updatedActivityTypes);
 
       toast({
-        title: "Success",
-        description: "Activity type updated successfully",
+        title: t("common.success"),
+        description: t("activityTypes.updateSuccess"),
       });
       cancelEditing();
     } catch (err) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to update activity type",
+        title: t("common.error"),
+        description: t("activityTypes.updateError"),
       });
     }
   };
@@ -159,14 +161,14 @@ export default function ActivityTypeManager({
       onActivityTypesChange(activityTypes.filter((type) => type.id !== id));
 
       toast({
-        title: "Success",
-        description: "Activity type deleted successfully",
+        title: t("common.success"),
+        description: t("activityTypes.deleteSuccess"),
       });
     } catch (err) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to delete activity type",
+        title: t("common.error"),
+        description: t("activityTypes.deleteError"),
       });
     }
   };
@@ -174,11 +176,11 @@ export default function ActivityTypeManager({
   return (
     <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">Manage Activity Types</Button>
+        <Button variant="outline">{t("activities.manageTypes")}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Manage Activity Types</DialogTitle>
+          <DialogTitle>{t("activityTypes.title")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <Form {...form}>
@@ -191,7 +193,7 @@ export default function ActivityTypeManager({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New Type Name</FormLabel>
+                    <FormLabel>{t("activityTypes.newTypeName")}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -204,7 +206,7 @@ export default function ActivityTypeManager({
                 name="color"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Color</FormLabel>
+                    <FormLabel>{t("common.color")}</FormLabel>
                     <FormControl>
                       <Input type="color" {...field} />
                     </FormControl>
@@ -212,7 +214,7 @@ export default function ActivityTypeManager({
                   </FormItem>
                 )}
               />
-              <Button type="submit">Add Type</Button>
+              <Button type="submit">{t("activityTypes.addType")}</Button>
             </form>
           </Form>
 
