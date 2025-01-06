@@ -34,14 +34,13 @@ import {
   getMinutesFromTime,
 } from "@/utils/timeUtils";
 import { format } from "date-fns";
-import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActivityGrid } from "./ActivityGrid";
 import ActivityTypeManager from "./ActivityTypeManager";
 import { DisplayTimeSelector } from "./DisplayTimeSelector";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { activitySchema, type ActivityInput } from "@/lib/validations/activity";
 import {
   Form,
   FormControl,
@@ -58,9 +57,11 @@ import {
 import { usePlanManager } from "@/hooks/usePlanManager";
 import { Plan } from "@/types/plans";
 import { PlanGrid } from "./PlanGrid";
-import { planSchema, type PlanInput } from "@/lib/validations/plan";
+import { createPlanSchema, type PlanInput } from "@/lib/validations/plan";
 import { Checkbox } from "./ui/checkbox";
 import { useLanguage } from "@/hooks/useLanguage";
+import { ActivityInput } from "@/lib/validations/activity";
+import { createActivitySchema } from "@/lib/validations/activity";
 
 const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 
@@ -136,7 +137,7 @@ export default function HabitTracker() {
   }, [dragState.isDragging]);
 
   const form = useForm<ActivityInput>({
-    resolver: zodResolver(activitySchema),
+    resolver: zodResolver(createActivitySchema(t)),
     defaultValues: {
       activity_name: "",
       activity_type_id: "",
@@ -147,7 +148,7 @@ export default function HabitTracker() {
   });
 
   const planForm = useForm<PlanInput>({
-    resolver: zodResolver(planSchema),
+    resolver: zodResolver(createPlanSchema(t)),
     defaultValues: {
       plan_name: "",
       start_time: "",
@@ -716,7 +717,7 @@ const EditActivityDialog = ({
 }) => {
   const { t } = useLanguage();
   const form = useForm<ActivityInput>({
-    resolver: zodResolver(activitySchema),
+    resolver: zodResolver(createActivitySchema(t)),
   });
 
   const formValues = form.watch();
@@ -947,7 +948,7 @@ const EditPlanDialog = ({
 }) => {
   const { t } = useLanguage();
   const form = useForm<PlanInput>({
-    resolver: zodResolver(planSchema),
+    resolver: zodResolver(createPlanSchema(t)),
     defaultValues: {
       plan_name: plan.plan_name,
       start_time: formatTimeForDisplay(plan.start_time),

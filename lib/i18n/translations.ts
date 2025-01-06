@@ -88,6 +88,33 @@ export const translations = {
         long: "EEEE, MMMM do, yyyy",
       },
     },
+    validation: {
+      required: "Required",
+      nameRequired: "Name is required",
+      activityTypeRequired: "Activity type is required",
+      startTimeRequired: "Start time is required",
+      endTimeRequired: "End time is required",
+      planNameRequired: "Plan name is required",
+    },
+    auth: {
+      email: "Email",
+      password: "Password",
+      confirmPassword: "Confirm Password",
+      login: "Login",
+      signup: "Sign Up",
+      switchToLogin: "Already have an account? Login",
+      switchToSignup: "Don't have an account? Sign Up",
+      language: "Language",
+      selectLanguage: "Select language",
+      title: {
+        login: "Login",
+        signup: "Sign Up",
+      },
+      description: {
+        login: "Enter your credentials to login",
+        signup: "Create a new account",
+      },
+    },
   },
   zh: {
     common: {
@@ -176,6 +203,33 @@ export const translations = {
       dateFormat: {
         short: "yyyy年MM月dd日",
         long: "yyyy年MM月dd日 EEEE",
+      },
+    },
+    validation: {
+      required: "必填",
+      nameRequired: "名称为必填项",
+      activityTypeRequired: "活动类型为必填项",
+      startTimeRequired: "开始时间为必填项",
+      endTimeRequired: "结束时间为必填项",
+      planNameRequired: "计划名称为必填项",
+    },
+    auth: {
+      email: "邮箱",
+      password: "密码",
+      confirmPassword: "确认密码",
+      login: "登录",
+      signup: "注册",
+      switchToLogin: "已有账号？登录",
+      switchToSignup: "没有账号？注册",
+      language: "语言",
+      selectLanguage: "选择语言",
+      title: {
+        login: "登录",
+        signup: "注册",
+      },
+      description: {
+        login: "输入您的登录信息",
+        signup: "创建新账户",
       },
     },
   },

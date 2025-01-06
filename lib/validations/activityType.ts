@@ -1,14 +1,19 @@
 import * as z from "zod";
+import { translations } from "@/lib/i18n/translations";
 
-export const activityTypeSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Activity type name is required")
-    .max(50, "Activity type name must be less than 50 characters"),
-  color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, "Invalid color format")
-    .default("#000000"),
-});
+export const createActivityTypeSchema = (t: (key: string) => string) => {
+  return z.object({
+    name: z.string().min(1, t("validation.nameRequired")),
+    color: z.string().min(1, t("validation.required")),
+  });
+};
+
+// Pour la compatibilité avec le code existant
+export const activityTypeSchema = createActivityTypeSchema(
+  (key) =>
+    translations.en.validation[
+      key.split(".")[1] as keyof typeof translations.en.validation
+    ] || key
+);
 
 export type ActivityTypeInput = z.infer<typeof activityTypeSchema>;

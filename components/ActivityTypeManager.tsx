@@ -21,7 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import {
-  activityTypeSchema,
+  createActivityTypeSchema,
   type ActivityTypeInput,
 } from "@/lib/validations/activityType";
 import { ActivityType } from "@/types/activities";
@@ -46,6 +46,8 @@ export default function ActivityTypeManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const supabase = createClientComponentClient();
   const { toast } = useToast();
+
+  const activityTypeSchema = createActivityTypeSchema(t);
 
   const form = useForm<ActivityTypeInput>({
     resolver: zodResolver(activityTypeSchema),

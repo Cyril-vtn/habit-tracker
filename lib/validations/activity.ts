@@ -1,20 +1,27 @@
 import * as z from "zod";
+import { translations } from "@/lib/i18n/translations";
+import { useLanguage } from "@/hooks/useLanguage";
 
-export const activitySchema = z.object({
-  activity_name: z.string().min(1, "Name is required"),
-  activity_type_id: z.string().min(1, "Activity type is required"),
-  start_time: z.string().min(1, "Start time is required"),
-  end_time: z.string().min(1, "End time is required"),
-  notes: z.string().optional(),
-});
+type Language = keyof typeof translations;
 
-export type ActivityInput = z.infer<typeof activitySchema>;
+export const createActivitySchema = (t: (key: string) => string) => {
+  return z.object({
+    activity_name: z.string().min(1, t("validation.nameRequired")),
+    activity_type_id: z.string().min(1, t("validation.activityTypeRequired")),
+    start_time: z.string().min(1, t("validation.startTimeRequired")),
+    end_time: z.string().min(1, t("validation.endTimeRequired")),
+    notes: z.string().optional(),
+  });
+};
 
-export const planSchema = z.object({
-  plan_name: z.string().min(1, "Name is required"),
-  start_time: z.string().min(1, "Start time is required"),
-  end_time: z.string().min(1, "End time is required"),
-  notes: z.string().optional(),
-});
+export const createPlanSchema = (t: (key: string) => string) => {
+  return z.object({
+    plan_name: z.string().min(1, t("validation.planNameRequired")),
+    start_time: z.string().min(1, t("validation.startTimeRequired")),
+    end_time: z.string().min(1, t("validation.endTimeRequired")),
+    notes: z.string().optional(),
+  });
+};
 
-export type PlanInput = z.infer<typeof planSchema>;
+export type ActivityInput = z.infer<ReturnType<typeof createActivitySchema>>;
+export type PlanInput = z.infer<ReturnType<typeof createPlanSchema>>;

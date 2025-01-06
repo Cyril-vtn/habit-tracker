@@ -32,12 +32,21 @@ import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AuthFormProps {
   isSignUp?: boolean;
 }
 
 export default function AuthForm({ isSignUp = false }: AuthFormProps) {
+  const { t, language, setLanguage } = useLanguage();
   const form = useForm<LoginInput | SignUpInput>({
     resolver: zodResolver(isSignUp ? signUpSchema : loginSchema),
     defaultValues: {
@@ -82,14 +91,18 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
     }
   };
 
+  const handleLanguageChange = (value: "en" | "zh") => {
+    setLanguage(value);
+  };
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>{isSignUp ? "Sign Up" : "Login"}</CardTitle>
+        <CardTitle>
+          {t(`auth.title.${isSignUp ? "signup" : "login"}`)}
+        </CardTitle>
         <CardDescription>
-          {isSignUp
-            ? "Create a new account"
-            : "Enter your credentials to login"}
+          {t(`auth.description.${isSignUp ? "signup" : "login"}`)}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -98,12 +111,24 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-4"
           >
+            <div className="space-y-2">
+              <Select value={language} onValueChange={handleLanguageChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("auth.selectLanguage")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="zh">中文</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t("auth.email")}</FormLabel>
                   <FormControl>
                     <Input {...field} type="email" disabled={isLoading} />
                   </FormControl>
@@ -116,7 +141,7 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t("auth.password")}</FormLabel>
                   <FormControl>
                     <Input {...field} type="password" disabled={isLoading} />
                   </FormControl>
@@ -130,7 +155,7 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>{t("auth.confirmPassword")}</FormLabel>
                     <FormControl>
                       <Input {...field} type="password" disabled={isLoading} />
                     </FormControl>
@@ -142,7 +167,7 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
             {error && <div className="text-sm text-red-500 mt-2">{error}</div>}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSignUp ? "Sign Up" : "Login"}
+              {isSignUp ? t("auth.signup") : t("auth.login")}
             </Button>
           </form>
         </Form>
@@ -152,9 +177,7 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
           href={isSignUp ? "/login" : "/signup"}
           className="text-sm text-muted-foreground hover:underline"
         >
-          {isSignUp
-            ? "Already have an account? Login"
-            : "Don't have an account? Sign Up"}
+          {isSignUp ? t("auth.switchToLogin") : t("auth.switchToSignup")}
         </Link>
       </CardFooter>
     </Card>
