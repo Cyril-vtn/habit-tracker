@@ -24,10 +24,13 @@ export const translations = {
       selectType: "Select a type",
       color: "Color",
       add: "Add",
+      language: "Language",
+      selectLanguage: "Select language",
     },
     activityTypes: {
       title: "Manage Activity Types",
       newTypeName: "New Type Name",
+      types: "Types",
       addType: "Add Type",
       updateSuccess: "Activity type updated successfully",
       updateError: "Failed to update activity type",
@@ -115,6 +118,26 @@ export const translations = {
         signup: "Create a new account",
       },
     },
+    toast: {
+      activity: {
+        addSuccess: "Activity added successfully",
+        addError: "Failed to add activity",
+        updateSuccess: "Activity updated successfully",
+        updateError: "Failed to update activity",
+        deleteSuccess: "Activity deleted successfully",
+        deleteError: "Failed to delete activity",
+        loadError: "Failed to load activities",
+      },
+      plan: {
+        addSuccess: "Plan added successfully",
+        addError: "Failed to add plan",
+        updateSuccess: "Plan updated successfully",
+        updateError: "Failed to update plan",
+        deleteSuccess: "Plan deleted successfully",
+        deleteError: "Failed to delete plan",
+        loadError: "Failed to load plans",
+      },
+    },
   },
   zh: {
     common: {
@@ -141,6 +164,8 @@ export const translations = {
       selectType: "选择类型",
       color: "颜色",
       add: "添加",
+      language: "语言",
+      selectLanguage: "选择语言",
     },
     activityTypes: {
       title: "管理活动类型",
@@ -230,6 +255,26 @@ export const translations = {
       description: {
         login: "输入您的登录信息",
         signup: "创建新账户",
+      },
+    },
+    toast: {
+      activity: {
+        addSuccess: "Activity added successfully",
+        addError: "Failed to add activity",
+        updateSuccess: "Activity updated successfully",
+        updateError: "Failed to update activity",
+        deleteSuccess: "Activity deleted successfully",
+        deleteError: "Failed to delete activity",
+        loadError: "Failed to load activities",
+      },
+      plan: {
+        addSuccess: "Plan added successfully",
+        addError: "Failed to add plan",
+        updateSuccess: "Plan updated successfully",
+        updateError: "Failed to update plan",
+        deleteSuccess: "Plan deleted successfully",
+        deleteError: "Failed to delete plan",
+        loadError: "Failed to load plans",
       },
     },
   },

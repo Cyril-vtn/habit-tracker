@@ -30,6 +30,8 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Pencil, Save, X, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Separator } from "./ui/separator";
+import { Label } from "./ui/label";
 
 interface ActivityTypeManagerProps {
   activityTypes: ActivityType[];
@@ -210,16 +212,25 @@ export default function ActivityTypeManager({
                   <FormItem>
                     <FormLabel>{t("common.color")}</FormLabel>
                     <FormControl>
-                      <Input type="color" {...field} />
+                      <Input
+                        className="w-12 cursor-pointer"
+                        type="color"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit">{t("activityTypes.addType")}</Button>
+              <Button className="w-full" type="submit">
+                {t("activityTypes.addType")}
+              </Button>
             </form>
           </Form>
-
+          <Separator />
+          <Label className="text-lg font-bold">
+            {t("activityTypes.types")}
+          </Label>
           <div className="space-y-3">
             {activityTypes.map((type) => (
               <div

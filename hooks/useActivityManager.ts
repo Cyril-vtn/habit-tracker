@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { convertToUTC, getMinutesFromTime } from "@/utils/timeUtils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "./use-toast";
+import { useLanguage } from "./useLanguage";
 
 const supabase = createClientComponentClient();
 
@@ -16,6 +17,7 @@ export const useActivityManager = (selectedDate: Date) => {
   const { user } = useAuth();
   const [hasLoadedTypes, setHasLoadedTypes] = useState(false);
   const isLoadingRef = useRef(false);
+  const { t } = useLanguage();
 
   const loadData = useCallback(async () => {
     if (!user || isLoadingRef.current) return;
@@ -51,14 +53,14 @@ export const useActivityManager = (selectedDate: Date) => {
       console.error("Error loading data:", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to load activities",
+        title: t("common.error"),
+        description: t("toast.activity.loadError"),
       });
     } finally {
       setIsLoading(false);
       isLoadingRef.current = false;
     }
-  }, [user, selectedDate, hasLoadedTypes]);
+  }, [user, selectedDate, hasLoadedTypes, t]);
 
   useEffect(() => {
     if (user) {
@@ -99,16 +101,16 @@ export const useActivityManager = (selectedDate: Date) => {
       if (error) throw error;
       setActivities((prevActivities) => [...prevActivities, data]);
       toast({
-        title: "Success",
-        description: "Activity added successfully",
+        title: t("common.success"),
+        description: t("toast.activity.addSuccess"),
       });
       return data;
     } catch (err) {
       console.error("Error in addActivity:", err);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to add activity",
+        title: t("common.error"),
+        description: t("toast.activity.addError"),
       });
       throw err;
     }
@@ -131,15 +133,15 @@ export const useActivityManager = (selectedDate: Date) => {
         )
       );
       toast({
-        title: "Success",
-        description: "Activity updated successfully",
+        title: t("common.success"),
+        description: t("toast.activity.updateSuccess"),
       });
     } catch (err) {
       console.error("Error updating activity:", err);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to update activity",
+        title: t("common.error"),
+        description: t("toast.activity.updateError"),
       });
       throw err;
     }
@@ -154,15 +156,15 @@ export const useActivityManager = (selectedDate: Date) => {
         prevActivities.filter((activity) => activity.id !== id)
       );
       toast({
-        title: "Success",
-        description: "Activity deleted successfully",
+        title: t("common.success"),
+        description: t("toast.activity.deleteSuccess"),
       });
     } catch (err) {
       console.error("Error deleting activity:", err);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to delete activity",
+        title: t("common.error"),
+        description: t("toast.activity.deleteError"),
       });
       throw err;
     }

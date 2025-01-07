@@ -6,6 +6,7 @@ import { convertToUTC, formatTimeForDisplay } from "@/utils/timeUtils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "./use-toast";
 import { PlanInput } from "@/lib/validations/plan";
+import { useLanguage } from "./useLanguage";
 
 export const usePlanManager = (selectedDate: Date) => {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -13,6 +14,7 @@ export const usePlanManager = (selectedDate: Date) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const supabase = createClientComponentClient();
+  const { t } = useLanguage();
 
   const loadPlans = useCallback(async () => {
     if (!user) return;
@@ -54,7 +56,7 @@ export const usePlanManager = (selectedDate: Date) => {
             end_time: data.end_time,
             date: formattedDate,
             user_id: user.id,
-            is_finished: false,
+            is_finished: data.is_finished,
           },
         ])
         .select()
@@ -64,16 +66,16 @@ export const usePlanManager = (selectedDate: Date) => {
       if (newPlan) {
         setPlans((prev) => [...prev, newPlan]);
         toast({
-          title: "Success",
-          description: "Plan added successfully",
+          title: t("common.success"),
+          description: t("toast.plan.addSuccess"),
         });
       }
     } catch (error) {
       console.error("Error adding plan:", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to add plan",
+        title: t("common.error"),
+        description: t("toast.plan.addError"),
       });
     }
   };
@@ -101,16 +103,16 @@ export const usePlanManager = (selectedDate: Date) => {
           prev.map((plan) => (plan.id === id ? updatedPlan : plan))
         );
         toast({
-          title: "Success",
-          description: "Plan updated successfully",
+          title: t("common.success"),
+          description: t("toast.plan.updateSuccess"),
         });
       }
     } catch (error) {
       console.error("Error updating plan:", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to update plan",
+        title: t("common.error"),
+        description: t("toast.plan.updateError"),
       });
     }
   };
@@ -129,15 +131,15 @@ export const usePlanManager = (selectedDate: Date) => {
 
       setPlans((prev) => prev.filter((plan) => plan.id !== id));
       toast({
-        title: "Success",
-        description: "Plan deleted successfully",
+        title: t("common.success"),
+        description: t("toast.plan.deleteSuccess"),
       });
     } catch (error) {
       console.error("Error deleting plan:", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to delete plan",
+        title: t("common.error"),
+        description: t("toast.plan.deleteError"),
       });
     }
   };
@@ -166,8 +168,8 @@ export const usePlanManager = (selectedDate: Date) => {
       console.error("Error toggling plan:", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to update plan status",
+        title: t("common.error"),
+        description: t("toast.plan.updateError"),
       });
     }
   };

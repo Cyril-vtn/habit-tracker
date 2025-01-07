@@ -10,18 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 export function ProfileForm() {
   const { user } = useAuth();
@@ -109,24 +103,7 @@ export function ProfileForm() {
               )}
             </Button>
           </form>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t("profile.language")}
-            </label>
-            <Select
-              value={language}
-              onValueChange={(value: "en" | "zh") => setLanguage(value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("profile.selectLanguage")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="zh">中文</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <LanguageSelector />
         </CardContent>
       </Card>
     </div>

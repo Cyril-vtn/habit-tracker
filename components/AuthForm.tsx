@@ -33,13 +33,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 interface AuthFormProps {
   isSignUp?: boolean;
@@ -111,17 +105,7 @@ export default function AuthForm({ isSignUp = false }: AuthFormProps) {
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-4"
           >
-            <div className="space-y-2">
-              <Select value={language} onValueChange={handleLanguageChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("auth.selectLanguage")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="zh">中文</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <LanguageSelector className="mb-4" />
 
             <FormField
               control={form.control}

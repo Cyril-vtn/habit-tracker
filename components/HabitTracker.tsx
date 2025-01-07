@@ -459,7 +459,9 @@ export default function HabitTracker() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit">{t("common.addActivity")}</Button>
+                  <Button className="w-full" type="submit">
+                    {t("common.addActivity")}
+                  </Button>
                 </form>
               </Form>
             </DialogContent>
@@ -549,8 +551,29 @@ export default function HabitTracker() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={planForm.control}
+                      name="is_finished"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                              <FormLabel className="font-medium">
+                                {t("plans.markAsCompleted")}
+                              </FormLabel>
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <Button type="submit">{t("common.addPlan")}</Button>
+                  <Button className="w-full" type="submit">
+                    {t("common.addPlan")}
+                  </Button>
                 </form>
               </Form>
             </DialogContent>
@@ -1081,24 +1104,39 @@ const EditPlanDialog = ({
               name="is_finished"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center space-x-2">
-                    <FormControl>
+                  <FormControl>
+                    <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
                       />
-                    </FormControl>
-                    <FormLabel className="font-medium">
-                      {t("plans.markAsCompleted")}
-                    </FormLabel>
-                  </div>
+                      <FormLabel className="font-medium">
+                        {t("plans.markAsCompleted")}
+                      </FormLabel>
+                    </div>
+                  </FormControl>
                 </FormItem>
               )}
             />
-            <div className="space-y-2">
-              <Button type="submit" className="w-full" disabled={!hasChanges}>
-                {t("plans.saveChanges")}
-              </Button>
+            <div className="mt-4 flex flex-col gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Button
+                      type="submit"
+                      disabled={!hasChanges}
+                      className="w-full"
+                    >
+                      {t("common.save")}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                {!hasChanges && (
+                  <TooltipContent>
+                    <p>{t("common.noChanges")}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
               <Button
                 type="button"
                 variant="destructive"
