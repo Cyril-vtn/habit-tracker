@@ -68,7 +68,7 @@ const LOCAL_STORAGE_KEY = "habitTracker_displayTimes";
 export default function HabitTracker() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const timeSlots = useTimeSlots();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const {
     activities,
     activityTypes,
